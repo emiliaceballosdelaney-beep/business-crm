@@ -139,14 +139,14 @@ export default function Overview() {
 
   if (loading) return (
     <div className="layout">
-      <Sidebar active="overview" />
+      <Sidebar />
       <main className="main"><div className="loading">Loading your dashboard…</div></main>
     </div>
   )
 
   return (
     <div className="layout">
-      <Sidebar active="overview" />
+      <Sidebar />
       <main className="main animate-in">
 
         {/* Page header */}
