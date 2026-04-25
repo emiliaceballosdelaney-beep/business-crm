@@ -4,7 +4,7 @@ import StartupTabs from '../components/StartupTabs'
 import Modal from '../components/Modal'
 import type { Startup } from '../lib/supabase'
 
-interface MeetingRow { id: string; startup_id: string; title: string; date: string; attendees?: string; notes?: string; created_at: string }
+interface MeetingRow { id: string; startup_id: string; title: string; date: string; attendees?: string[] | null; notes?: string | null; created_at: string }
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
@@ -84,7 +84,7 @@ export default function Meetings() {
         <h1 style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '2rem', marginBottom: '0.25rem' }}>Meetings</h1>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>{meetings.length} meetings logged</p>
 
-        <StartupTabs startups={startups} selectedId={selectedId} onChange={handleTabChange} />
+        <StartupTabs startups={startups} selected={selectedId} onChange={handleTabChange} />
 
         <div style={{ display: 'flex', gap: '2rem', marginTop: '1.5rem' }}>
           <div style={{ background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border-light)', padding: '1.5rem', width: 320, flexShrink: 0 }}>
@@ -117,7 +117,7 @@ export default function Meetings() {
                   <div key={m.id} style={{ background: 'var(--bg-card)', borderRadius: '10px', padding: '1rem 1.25rem', border: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <div style={{ fontWeight: 600 }}>{m.title}</div>
-                      <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{m.date?.split('T')[0]}{m.attendees ? ' · ' + m.attendees : ''}</div>
+                      <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{m.date?.split('T')[0]}{m.attendees?.length ? ' · ' + m.attendees.join(', ') : ''}</div>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button className="action-btn action-btn-sage" onClick={() => setViewMeeting(m)}>View</button>
