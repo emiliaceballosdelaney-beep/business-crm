@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Sidebar from '../components/Sidebar'
 import StartupTabs from '../components/StartupTabs'
 import Modal from '../components/Modal'
+import { supabase } from '../lib/supabase'
 import type { Startup } from '../lib/supabase'
 
 interface Client {
@@ -38,16 +39,11 @@ export default function Clients() {
 
   useEffect(() => {
     (async () => {
-      const { createClient } = await import('@supabase/supabase-js')
-      const sb = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
-      const { data: st } = await sb.from('startups').select('*').order('name')
+            const { data: st } = await supabase.from('startups').select('*').order('name')
       if (st?.length) {
         setStartups(st)
         setSelectedId(st[0].id)
-        const { data: cl } = await sb.from('clients').select('*').eq('startup_id', st[0].id).order('name')
+        const { data: cl } = await supabase.from('clients').select('*').eq('startup_id', st[0].id).order('name')
         setClients(cl || [])
       }
       setLoading(false)
@@ -55,9 +51,7 @@ export default function Clients() {
   }, [])
 
   const loadClients = async (sid: string) => {
-    const { createClient } = await import('@supabase/supabase-js')
-    const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
-    const { data } = await sb.from('clients').select('*').eq('startup_id', sid).order('name')
+        const { data } = await supabase.from('clients').select('*').eq('startup_id', sid).order('name')
     setClients(data || [])
   }
 
@@ -65,9 +59,7 @@ export default function Clients() {
 
   const addClient = async () => {
     if (!form.name.trim()) return
-    const { createClient } = await import('@supabase/supabase-js')
-    const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
-    await sb.from('clients').insert({ ...form, startup_id: selectedId })
+        await supabase.from('clients').insert({ ...form, startup_id: selectedId })
     setForm({ name: '', email: '', phone: '', status: 'prospect', notes: '' })
     setShowAdd(false)
     await loadClients(selectedId)
@@ -75,26 +67,20 @@ export default function Clients() {
   }
 
   const updateStatus = async (client: Client, status: string) => {
-    const { createClient } = await import('@supabase/supabase-js')
-    const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
-    await sb.from('clients').update({ status }).eq('id', client.id)
+        await supabase.from('clients').update({ status }).eq('id', client.id)
     await loadClients(selectedId)
     showToast('Status updated')
   }
 
   const removeClient = async (id: string) => {
-    const { createClient } = await import('@supabase/supabase-js')
-    const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
-    await sb.from('clients').delete().eq('id', id)
+        await supabase.from('clients').delete().eq('id', id)
     await loadClients(selectedId)
     showToast('Client removed')
   }
 
   const logInteraction = async () => {
     if (!selectedClient) return
-    const { createClient } = await import('@supabase/supabase-js')
-    const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
-    await sb.from('client_interactions').insert({
+        await supabase.from('client_interactions').insert({
       client_id: selectedClient.id,
       type: interactionForm.type,
       notes: interactionForm.notes,
