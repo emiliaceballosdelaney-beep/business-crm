@@ -80,7 +80,7 @@ export default function Notes() {
         <h1 style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '2rem', marginBottom: '0.25rem' }}>Notes</h1>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>{notes.length} notes</p>
 
-        <StartupTabs startups={startups} selectedId={selectedId} onChange={handleTabChange} />
+        <StartupTabs startups={startups} selected={selectedId} onChange={handleTabChange} />
 
         <div style={{ display: 'flex', gap: '0.5rem', margin: '1.5rem 0', flexWrap: 'wrap', alignItems: 'center' }}>
           <button className="action-btn action-btn-primary" onClick={() => setShowAdd(true)}>+ New Note</button>
