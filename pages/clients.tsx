@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import Sidebar from '../components/Sidebar'
 import StartupTabs from '../components/StartupTabs'
 import Modal from '../components/Modal'
+import type { Startup } from '../lib/supabase'
 
-interface Startup { id: string; name: string }
 interface Client {
   id: string
   startup_id: string
@@ -43,7 +43,7 @@ export default function Clients() {
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       )
-      const { data: st } = await sb.from('startups').select('id, name').order('name')
+      const { data: st } = await sb.from('startups').select('*').order('name')
       if (st?.length) {
         setStartups(st)
         setSelectedId(st[0].id)
@@ -126,7 +126,7 @@ export default function Clients() {
         <StartupTabs startups={startups} selectedId={selectedId} onChange={handleTabChange} />
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', margin: '1.5rem 0' }}>
-          {[['Total', total], ['Active', activeCount], ['Other', otherCount]].map(([label, val]) => (
+          {([['Total', total], ['Active', activeCount], ['Other', otherCount]] as [string, number][]).map(([label, val]) => (
             <div key={label} style={{ background: 'var(--bg-card)', borderRadius: '12px', padding: '1.5rem', border: '1px solid var(--border-light)' }}>
               <div style={{ fontSize: '2.5rem', fontFamily: 'Cormorant Garamond, serif' }}>{val}</div>
               <div style={{ fontSize: '0.7rem', letterSpacing: '0.1em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{label}</div>
@@ -165,7 +165,7 @@ export default function Clients() {
                             <option value="inactive">Inactive</option>
                           </select>
                           <button className="action-btn action-btn-sage" onClick={() => { setSelectedClient(c); setShowInteraction(true) }}>Log</button>
-                          <button className="action-btn" onClick={() => removeClient(c.id)} style={{ color: 'var(--text-muted)' }}>✕</button>
+                          <button className="action-btn" onClick={() => removeClient(c.id)} style={{ color: 'var(--text-muted)' }}>x</button>
                         </div>
                       )
                     })}
@@ -177,20 +177,10 @@ export default function Clients() {
         )}
 
         <Modal isOpen={showAdd} onClose={() => setShowAdd(false)} title="Add Client">
-          <div className="form-group">
-            <label>Name *</label>
-            <input className="form-input" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="Full name" />
-          </div>
-          <div className="form-group">
-            <label>Email</label>
-            <input className="form-input" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))} placeholder="email@example.com" />
-          </div>
-          <div className="form-group">
-            <label>Phone</label>
-            <input className="form-input" value={form.phone} onChange={e => setForm(f => ({...f, phone: e.target.value}))} placeholder="Phone number" />
-          </div>
-          <div className="form-group">
-            <label>Status</label>
+          <div className="form-group"><label>Name *</label><input className="form-input" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="Full name" /></div>
+          <div className="form-group"><label>Email</label><input className="form-input" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))} placeholder="email@example.com" /></div>
+          <div className="form-group"><label>Phone</label><input className="form-input" value={form.phone} onChange={e => setForm(f => ({...f, phone: e.target.value}))} placeholder="Phone number" /></div>
+          <div className="form-group"><label>Status</label>
             <select className="form-input" value={form.status} onChange={e => setForm(f => ({...f, status: e.target.value}))}>
               <option value="prospect">Prospect</option>
               <option value="lead">Lead</option>
@@ -198,19 +188,15 @@ export default function Clients() {
               <option value="inactive">Inactive</option>
             </select>
           </div>
-          <div className="form-group">
-            <label>Notes</label>
-            <textarea className="form-textarea" value={form.notes} onChange={e => setForm(f => ({...f, notes: e.target.value}))} placeholder="Any notes..." rows={3} />
-          </div>
+          <div className="form-group"><label>Notes</label><textarea className="form-textarea" value={form.notes} onChange={e => setForm(f => ({...f, notes: e.target.value}))} placeholder="Any notes..." rows={3} /></div>
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
             <button className="action-btn" onClick={() => setShowAdd(false)}>Cancel</button>
             <button className="action-btn action-btn-primary" onClick={addClient}>Add Client</button>
           </div>
         </Modal>
 
-        <Modal isOpen={showInteraction} onClose={() => setShowInteraction(false)} title={`Log Interaction — ${selectedClient?.name}`}>
-          <div className="form-group">
-            <label>Type</label>
+        <Modal isOpen={showInteraction} onClose={() => setShowInteraction(false)} title={"Log Interaction — " + (selectedClient?.name || '')}>
+          <div className="form-group"><label>Type</label>
             <select className="form-input" value={interactionForm.type} onChange={e => setInteractionForm(f => ({...f, type: e.target.value}))}>
               <option value="call">Call</option>
               <option value="email">Email</option>
@@ -219,10 +205,7 @@ export default function Clients() {
               <option value="other">Other</option>
             </select>
           </div>
-          <div className="form-group">
-            <label>Notes</label>
-            <textarea className="form-textarea" value={interactionForm.notes} onChange={e => setInteractionForm(f => ({...f, notes: e.target.value}))} placeholder="What happened?" rows={4} />
-          </div>
+          <div className="form-group"><label>Notes</label><textarea className="form-textarea" value={interactionForm.notes} onChange={e => setInteractionForm(f => ({...f, notes: e.target.value}))} placeholder="What happened?" rows={4} /></div>
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
             <button className="action-btn" onClick={() => setShowInteraction(false)}>Cancel</button>
             <button className="action-btn action-btn-primary" onClick={logInteraction}>Log It</button>
