@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import Sidebar from '../components/Sidebar'
 import StartupTabs from '../components/StartupTabs'
 import Modal from '../components/Modal'
+import type { Startup } from '../lib/supabase'
 
-interface Startup { id: string; name: string }
 interface Note { id: string; startup_id: string; title: string; content: string; tags: string[]; created_at: string }
 
 const TAG_COLORS: Record<string, string> = {
@@ -27,7 +27,7 @@ export default function Notes() {
     (async () => {
       const { createClient } = await import('@supabase/supabase-js')
       const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
-      const { data: st } = await sb.from('startups').select('id, name').order('name')
+      const { data: st } = await sb.from('startups').select('*').order('name')
       if (st?.length) {
         setStartups(st)
         setSelectedId(st[0].id)
@@ -100,11 +100,9 @@ export default function Notes() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
             {filtered.map(note => (
-              <div key={note.id} onClick={() => setViewNote(note)} style={{ background: 'var(--bg-card)', borderRadius: '12px', padding: '1.25rem', border: '1px solid var(--border-light)', cursor: 'pointer', transition: 'box-shadow 0.15s' }}
-                onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)')}
-                onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}>
+              <div key={note.id} onClick={() => setViewNote(note)} style={{ background: 'var(--bg-card)', borderRadius: '12px', padding: '1.25rem', border: '1px solid var(--border-light)', cursor: 'pointer' }}>
                 <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>{note.title}</div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '0.75rem', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' }}>{note.content}</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{note.content?.substring(0, 120)}{note.content?.length > 120 ? '...' : ''}</div>
                 <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
                   {note.tags?.map(tag => (
                     <span key={tag} style={{ background: TAG_COLORS[tag] || '#eee', padding: '0.15rem 0.5rem', borderRadius: '12px', fontSize: '0.7rem' }}>{tag}</span>
@@ -133,7 +131,7 @@ export default function Notes() {
         </Modal>
 
         <Modal isOpen={!!viewNote} onClose={() => setViewNote(null)} title={viewNote?.title || ''}>
-          <div style={{ whiteSpace: 'pre-wrap', marginBottom: '1rem', color: 'var(--text-primary)' }}>{viewNote?.content}</div>
+          <div style={{ whiteSpace: 'pre-wrap', marginBottom: '1rem' }}>{viewNote?.content}</div>
           <div style={{ display: 'flex', gap: '0.35rem', marginBottom: '1rem' }}>
             {viewNote?.tags?.map(tag => <span key={tag} style={{ background: TAG_COLORS[tag] || '#eee', padding: '0.15rem 0.5rem', borderRadius: '12px', fontSize: '0.75rem' }}>{tag}</span>)}
           </div>
