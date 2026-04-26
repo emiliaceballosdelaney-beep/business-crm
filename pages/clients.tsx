@@ -42,8 +42,8 @@ export default function Clients() {
             const { data: st } = await supabase.from('startups').select('*').order('name')
       if (st?.length) {
         setStartups(st)
-        const prosper = st.find((s: any) => s.name.toLowerCase().includes('prosper')); setSelectedId(prosper ? prosper.id : st[0].id)
-        const { data: cl } = await supabase.from('clients').select('*').eq('startup_id', st[0].id).order('name')
+        const prosper = st.find((s: any) => s.name.toLowerCase().includes('prosper')); const defaultId = prosper ? prosper.id : st[0].id; setSelectedId(defaultId)
+        const { data: cl } = await supabase.from('clients').select('*').eq('startup_id', defaultId).order('name')
         setClients(cl || [])
       }
       setLoading(false)
