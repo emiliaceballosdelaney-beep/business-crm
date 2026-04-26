@@ -29,8 +29,8 @@ export default function Notes() {
             const { data: st } = await supabase.from('startups').select('*').order('name')
       if (st?.length) {
         setStartups(st)
-        const prosper = st.find((s: any) => s.name.toLowerCase().includes('prosper')); setSelectedId(prosper ? prosper.id : st[0].id)
-        const { data: n } = await supabase.from('startup_notes').select('*').eq('startup_id', st[0].id).order('created_at', { ascending: false })
+        const prosper = st.find((s: any) => s.name.toLowerCase().includes('prosper')); const defaultId = prosper ? prosper.id : st[0].id; setSelectedId(defaultId)
+        const { data: n } = await supabase.from('startup_notes').select('*').eq('startup_id', defaultId).order('created_at', { ascending: false })
         setNotes(n || [])
       }
       setLoading(false)
