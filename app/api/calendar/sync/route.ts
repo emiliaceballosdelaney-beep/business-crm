@@ -70,13 +70,19 @@ export async function POST() {
 
   // Discover all calendars the connected account can read (incl. shared ones)
   const calendars = await listCalendars(accessToken)
+  console.log('[sync] calendars found:', calendars.map(c => `${c.summary} (${c.id}) role=${c.accessRole}`))
+
   const calendarResults = await Promise.allSettled(
     calendars.map(async cal => {
       const evs = await fetchCalendarEvents(accessToken, cal.id, timeMin, timeMax)
+      console.log(`[sync] ${cal.summary}: ${evs.length} events`)
       return evs.map(e => ({ event: e, calendarName: cal.summary }))
     })
   )
   // Only use calendars that fetched successfully; skip any that errored
+  calendarResults.forEach((r, i) => {
+    if (r.status === 'rejected') console.error(`[sync] calendar "${calendars[i]?.summary}" failed:`, r.reason)
+  })
   const allCalendarEvents = calendarResults
     .filter((r): r is PromiseFulfilledResult<{ event: GCalEvent; calendarName: string }[]> => r.status === 'fulfilled')
     .map(r => r.value)
