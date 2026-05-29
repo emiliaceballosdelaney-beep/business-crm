@@ -88,6 +88,9 @@ export default function MeetingDetail({ meeting, isOpen, onClose, onEdit }: Prop
                 <span className="capitalize">{meeting.status}</span>
               </Row>
             )}
+            {meeting.source_calendar && (
+              <Row label="Calendar">{meeting.source_calendar}</Row>
+            )}
             {meeting.notes && (
               <div className="flex flex-col gap-1">
                 <span className="text-[11px] text-[#574141]/60 uppercase tracking-wider font-semibold">Notes</span>

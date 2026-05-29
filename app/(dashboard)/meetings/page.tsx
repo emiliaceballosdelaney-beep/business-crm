@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 async function getMeetings() {
   const { data, error } = await supabase
     .from('meetings')
-    .select('id, title, date, duration_minutes, meeting_type, notes, status, meeting_url, google_event_id, client:clients!client_id(id, name)')
+    .select('id, title, date, duration_minutes, meeting_type, notes, status, meeting_url, google_event_id, source_calendar, client:clients!client_id(id, name)')
     .eq('startup_id', PROSPER_STARTUP_ID)
     .not('status', 'eq', 'cancelled')
     .order('date', { ascending: true })

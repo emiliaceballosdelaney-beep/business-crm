@@ -19,6 +19,7 @@ export type MeetingRow = {
   status: string
   meeting_url: string | null
   google_event_id: string | null
+  source_calendar: string | null
   client: { id: string; name: string } | null
 }
 
@@ -125,6 +126,11 @@ export default function MeetingCard({ meeting, past = false, onSelect }: Props) 
             {meeting.duration_minutes && (
               <span style={{ fontSize: 11, color: 'var(--muted-foreground)', fontFamily: 'var(--font-body)' }}>
                 · {meeting.duration_minutes} min
+              </span>
+            )}
+            {meeting.source_calendar && (
+              <span style={{ fontSize: 10, color: '#9c9490', fontFamily: 'var(--font-body)' }}>
+                · 📅 {meeting.source_calendar}
               </span>
             )}
           </div>

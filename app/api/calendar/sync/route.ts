@@ -70,20 +70,23 @@ export async function POST() {
 
   // Discover all calendars the connected account can read (incl. shared ones)
   const calendars = await listCalendars(accessToken)
-  const allEventArrays = await Promise.all(
-    calendars.map(cal => fetchCalendarEvents(accessToken, cal.id, timeMin, timeMax))
+  const allCalendarEvents = await Promise.all(
+    calendars.map(async cal => {
+      const evs = await fetchCalendarEvents(accessToken, cal.id, timeMin, timeMax)
+      return evs.map(e => ({ event: e, calendarName: cal.summary }))
+    })
   )
-  // Deduplicate by google_event_id across calendars
+  // Deduplicate by google_event_id — first calendar wins
   const seen = new Set<string>()
-  const events = allEventArrays.flat().filter(e => {
-    if (seen.has(e.id)) return false
-    seen.add(e.id)
+  const taggedEvents = allCalendarEvents.flat().filter(({ event }) => {
+    if (seen.has(event.id)) return false
+    seen.add(event.id)
     return true
   })
 
-  const upserts = events
-    .filter(e => e.status !== 'cancelled' && (e.start?.dateTime ?? e.start?.date))
-    .map(event => {
+  const upserts = taggedEvents
+    .filter(({ event: e }) => e.status !== 'cancelled' && (e.start?.dateTime ?? e.start?.date))
+    .map(({ event, calendarName }) => {
       const startDt = (event.start.dateTime ?? event.start.date)!
       const endDt   = event.end?.dateTime ?? event.end?.date
       const durationMinutes = endDt && event.start?.dateTime
@@ -101,6 +104,7 @@ export async function POST() {
           notes:            cleanNotes(event.description, meetingUrl),
           status:           'scheduled',
           meeting_type:     'session',
+          source_calendar:  calendarName,
         },
         { onConflict: 'google_event_id' },
       )
