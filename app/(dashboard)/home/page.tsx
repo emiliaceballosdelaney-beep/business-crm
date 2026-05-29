@@ -57,7 +57,7 @@ async function getHomeData() {
     supabase.from('milestones').select('id, status').eq('startup_id', PROSPER_STARTUP_ID),
     supabase
       .from('meetings')
-      .select('id, title, date, duration_minutes, meeting_type, notes, status, meeting_url, google_event_id, client:clients!client_id(id, name, lead_stage)')
+      .select('id, title, date, duration_minutes, meeting_type, notes, status, meeting_url, google_event_id, source_calendar, client:clients!client_id(id, name, lead_stage)')
       .eq('startup_id', PROSPER_STARTUP_ID)
       .gte('date', todayStart.toISOString())
       .lte('date', todayEnd.toISOString())

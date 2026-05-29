@@ -39,6 +39,7 @@ function toDetailRow(m: MeetingRow): DetailMeetingRow {
     status: m.status,
     meeting_url: m.meeting_url,
     google_event_id: m.google_event_id,
+    source_calendar: m.source_calendar,
     client: m.client ? { id: m.client.id, name: m.client.name } : null,
   }
 }

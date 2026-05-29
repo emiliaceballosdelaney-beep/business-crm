@@ -8,6 +8,7 @@ export type MeetingRow = {
   status: string
   meeting_url: string | null
   google_event_id: string | null
+  source_calendar: string | null
   client: { id: string; name: string; lead_stage: string | null } | null
 }
 
