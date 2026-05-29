@@ -70,12 +70,17 @@ export async function POST() {
 
   // Discover all calendars the connected account can read (incl. shared ones)
   const calendars = await listCalendars(accessToken)
-  const allCalendarEvents = await Promise.all(
+  const calendarResults = await Promise.allSettled(
     calendars.map(async cal => {
       const evs = await fetchCalendarEvents(accessToken, cal.id, timeMin, timeMax)
       return evs.map(e => ({ event: e, calendarName: cal.summary }))
     })
   )
+  // Only use calendars that fetched successfully; skip any that errored
+  const allCalendarEvents = calendarResults
+    .filter((r): r is PromiseFulfilledResult<{ event: GCalEvent; calendarName: string }[]> => r.status === 'fulfilled')
+    .map(r => r.value)
+
   // Deduplicate by google_event_id — first calendar wins
   const seen = new Set<string>()
   const taggedEvents = allCalendarEvents.flat().filter(({ event }) => {
@@ -112,6 +117,7 @@ export async function POST() {
 
   const results = await Promise.allSettled(upserts)
   const imported = results.filter(r => r.status === 'fulfilled').length
+  const calendarsFailed = calendarResults.filter(r => r.status === 'rejected').length
 
-  return NextResponse.json({ ok: true, imported })
+  return NextResponse.json({ ok: true, imported, calendarsScanned: calendarResults.length, calendarsFailed })
 }
