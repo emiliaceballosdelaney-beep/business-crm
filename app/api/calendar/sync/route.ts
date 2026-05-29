@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getGoogleTokens, getValidAccessToken, fetchCalendarEvents, type GCalEvent } from '@/lib/google'
+import { getGoogleTokens, getValidAccessToken, listCalendars, fetchCalendarEvents, type GCalEvent } from '@/lib/google'
 import { supabase } from '@/lib/supabase'
 import { PROSPER_STARTUP_ID } from '@/lib/constants'
 
@@ -68,7 +68,18 @@ export async function POST() {
   const timeMin = new Date(now.getTime() - 7  * 24 * 60 * 60 * 1000).toISOString()
   const timeMax = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000).toISOString()
 
-  const events = await fetchCalendarEvents(accessToken, tokens.calendar_id, timeMin, timeMax)
+  // Discover all calendars the connected account can read (incl. shared ones)
+  const calendars = await listCalendars(accessToken)
+  const allEventArrays = await Promise.all(
+    calendars.map(cal => fetchCalendarEvents(accessToken, cal.id, timeMin, timeMax))
+  )
+  // Deduplicate by google_event_id across calendars
+  const seen = new Set<string>()
+  const events = allEventArrays.flat().filter(e => {
+    if (seen.has(e.id)) return false
+    seen.add(e.id)
+    return true
+  })
 
   const upserts = events
     .filter(e => e.status !== 'cancelled' && (e.start?.dateTime ?? e.start?.date))

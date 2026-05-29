@@ -194,6 +194,25 @@ export type GCalEvent = {
   status?: string
 }
 
+export type GCalendarListEntry = {
+  id: string
+  summary: string
+  primary?: boolean
+  accessRole: string
+}
+
+// Returns all calendars the authenticated account can read (excludes freeBusyReader-only)
+export async function listCalendars(accessToken: string): Promise<GCalendarListEntry[]> {
+  const res = await fetch(
+    `${GOOGLE_CAL_BASE}/users/me/calendarList`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  )
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error?.message ?? 'Failed to list Google Calendars')
+  const all = (data.items ?? []) as GCalendarListEntry[]
+  return all.filter(c => c.accessRole !== 'freeBusyReader')
+}
+
 export async function fetchCalendarEvents(
   accessToken: string,
   calendarId: string,

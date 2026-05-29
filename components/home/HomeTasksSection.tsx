@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import type { TaskRow } from '@/components/home/types'
 import { PRIORITY_COLORS } from '@/lib/constants'
 import TaskForm from '@/components/forms/TaskForm'
+import { supabase } from '@/lib/supabase'
 
 function AssocPills({ task }: { task: TaskRow }) {
   const pills = []
@@ -29,7 +30,7 @@ function AssocPills({ task }: { task: TaskRow }) {
   return <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>{pills}</div>
 }
 
-function HomeTaskRow({ task, isLast }: { task: TaskRow; isLast: boolean }) {
+function HomeTaskRow({ task, isLast, onToggle }: { task: TaskRow; isLast: boolean; onToggle: (id: string, completed: boolean) => void }) {
   const router = useRouter()
   const isCompleted = task.status === 'completed'
 
@@ -43,8 +44,11 @@ function HomeTaskRow({ task, isLast }: { task: TaskRow; isLast: boolean }) {
         cursor: 'pointer',
       }}
     >
-      {/* Checkbox (visual only) */}
-      <div style={{ flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+      {/* Checkbox */}
+      <div
+        style={{ flexShrink: 0, cursor: 'pointer' }}
+        onClick={e => { e.stopPropagation(); onToggle(task.id, !isCompleted) }}
+      >
         <div style={{ width: 20, height: 20, borderRadius: 3, border: isCompleted ? 'none' : '2px solid #8a7171', backgroundColor: isCompleted ? '#640015' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {isCompleted && <span style={{ color: 'white', fontSize: 11, lineHeight: 1 }}>✓</span>}
         </div>
@@ -89,9 +93,25 @@ function HomeTaskRow({ task, isLast }: { task: TaskRow; isLast: boolean }) {
 }
 
 export default function HomeTasksSection({ tasks }: { tasks: TaskRow[] }) {
+  const router = useRouter()
   const [showAdd, setShowAdd] = useState(false)
-  const open = tasks.filter(t => t.status !== 'completed')
-  const done = tasks.filter(t => t.status === 'completed')
+  const [statuses, setStatuses] = useState<Record<string, string>>(() =>
+    Object.fromEntries(tasks.map(t => [t.id, t.status]))
+  )
+
+  async function handleToggle(id: string, markCompleted: boolean) {
+    const newStatus = markCompleted ? 'completed' : 'open'
+    setStatuses(prev => ({ ...prev, [id]: newStatus }))
+    await supabase.from('tasks').update({
+      status: newStatus,
+      completed_at: markCompleted ? new Date().toISOString() : null,
+    }).eq('id', id)
+    router.refresh()
+  }
+
+  const tasksWithStatus = tasks.map(t => ({ ...t, status: statuses[t.id] ?? t.status }))
+  const open = tasksWithStatus.filter(t => t.status !== 'completed')
+  const done = tasksWithStatus.filter(t => t.status === 'completed')
   const ordered = [...open, ...done]
 
   return (
@@ -122,7 +142,7 @@ export default function HomeTasksSection({ tasks }: { tasks: TaskRow[] }) {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {ordered.map((task, idx) => (
-              <HomeTaskRow key={task.id} task={task} isLast={idx === ordered.length - 1} />
+              <HomeTaskRow key={task.id} task={task} isLast={idx === ordered.length - 1} onToggle={handleToggle} />
             ))}
           </div>
         )}
