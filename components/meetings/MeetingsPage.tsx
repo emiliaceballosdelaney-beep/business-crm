@@ -134,67 +134,76 @@ export default function MeetingsPage({ meetings, googleConnected }: Props) {
         }}
       />
 
-      {/* Filter bar */}
-      <div className="flex justify-between items-center py-2 mb-2">
-        <div className="relative w-[200px]">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#574141] pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search meetings..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white border border-[#debfbf] rounded-lg text-[14px] font-body text-[#1b1c1c] focus:outline-none focus:ring-1 focus:ring-[#640015] focus:border-[#640015]"
-          />
+      {!googleConnected ? (
+        <div className="border border-dashed border-[#E8E0DC] rounded-lg py-16 px-4 text-center">
+          <p className="font-body text-[15px] text-[#574141] mb-2">Connect Google to sync your meetings here.</p>
+          <a href="/api/auth/google/connect" className="font-body text-[14px] text-[#640015] underline">Connect Google Calendar →</a>
         </div>
-        {view === 'list' ? (
-          <FilterDropdown
-            value={filter === 'all' ? '' : filter}
-            onChange={v => setFilter((v || 'all') as FilterMode)}
-            options={MEETING_FILTER_OPTIONS}
-            placeholder="All meetings"
-          />
-        ) : (
-          <div className="flex bg-[#F7F1ED] p-1 rounded-full border border-[#E8E0DC]">
-            {(['month', 'week'] as const).map(v => (
-              <button
-                key={v}
-                onClick={() => setCalView(v)}
-                className="px-4 py-1.5 rounded-full text-[11px] font-label font-medium transition-colors"
-                style={{
-                  backgroundColor: calView === v ? '#640015' : 'transparent',
-                  color: calView === v ? '#F7F1ED' : '#6b7280',
-                }}
-              >
-                {v.charAt(0).toUpperCase() + v.slice(1)}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {view === 'calendar' ? (
-        <MeetingsCalendar meetings={meetings} calView={calView} onSelect={setDetailMeeting} />
       ) : (
         <>
-          {filter !== 'past' && (
-            <>
-              <SectionHeading label="Upcoming" count={upcoming.length} />
-              <div className="flex flex-col gap-2.5 mb-7">
-                {upcoming.length === 0
-                  ? <EmptyState text="No upcoming meetings" />
-                  : upcoming.map(m => <MeetingCard key={m.id} meeting={m} onSelect={setDetailMeeting} />)}
-              </div>
-            </>
-          )}
-          {(filter === 'all' || filter === 'past') && (
-            <div className={filter === 'past' ? '' : 'mt-10'}>
-              <SectionHeading label="Past" count={past.length} />
-              <div className="flex flex-col gap-2.5">
-                {past.length === 0
-                  ? <EmptyState text="No past meetings" />
-                  : past.map(m => <MeetingCard key={m.id} meeting={m} past onSelect={setDetailMeeting} />)}
-              </div>
+          {/* Filter bar */}
+          <div className="flex justify-between items-center py-2 mb-2">
+            <div className="relative w-[200px]">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#574141] pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search meetings..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-white border border-[#debfbf] rounded-lg text-[14px] font-body text-[#1b1c1c] focus:outline-none focus:ring-1 focus:ring-[#640015] focus:border-[#640015]"
+              />
             </div>
+            {view === 'list' ? (
+              <FilterDropdown
+                value={filter === 'all' ? '' : filter}
+                onChange={v => setFilter((v || 'all') as FilterMode)}
+                options={MEETING_FILTER_OPTIONS}
+                placeholder="All meetings"
+              />
+            ) : (
+              <div className="flex bg-[#F7F1ED] p-1 rounded-full border border-[#E8E0DC]">
+                {(['month', 'week'] as const).map(v => (
+                  <button
+                    key={v}
+                    onClick={() => setCalView(v)}
+                    className="px-4 py-1.5 rounded-full text-[11px] font-label font-medium transition-colors"
+                    style={{
+                      backgroundColor: calView === v ? '#640015' : 'transparent',
+                      color: calView === v ? '#F7F1ED' : '#6b7280',
+                    }}
+                  >
+                    {v.charAt(0).toUpperCase() + v.slice(1)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {view === 'calendar' ? (
+            <MeetingsCalendar meetings={meetings} calView={calView} onSelect={setDetailMeeting} />
+          ) : (
+            <>
+              {filter !== 'past' && (
+                <>
+                  <SectionHeading label="Upcoming" count={upcoming.length} />
+                  <div className="flex flex-col gap-2.5 mb-7">
+                    {upcoming.length === 0
+                      ? <EmptyState text="No upcoming meetings" />
+                      : upcoming.map(m => <MeetingCard key={m.id} meeting={m} onSelect={setDetailMeeting} />)}
+                  </div>
+                </>
+              )}
+              {(filter === 'all' || filter === 'past') && (
+                <div className={filter === 'past' ? '' : 'mt-10'}>
+                  <SectionHeading label="Past" count={past.length} />
+                  <div className="flex flex-col gap-2.5">
+                    {past.length === 0
+                      ? <EmptyState text="No past meetings" />
+                      : past.map(m => <MeetingCard key={m.id} meeting={m} past onSelect={setDetailMeeting} />)}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </>
       )}

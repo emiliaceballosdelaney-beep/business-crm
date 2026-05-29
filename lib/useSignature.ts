@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 
 const LOGO_ABSOLUTE = 'https://startup-dashboard-five.vercel.app/prosper_with_em_logo_transparent.png'
-export const DEFAULT_SIG_TEXT = 'Emilia Ceballos\nprosperwith.com'
+export const DEFAULT_SIG_TEXT = 'Emilia Ceballos\nprosperwithem.com'
 
 export function buildSignatureHtml(text: string): string {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean)

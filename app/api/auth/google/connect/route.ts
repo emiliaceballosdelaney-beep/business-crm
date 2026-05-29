@@ -15,6 +15,7 @@ export async function GET() {
     scope: [
       'https://www.googleapis.com/auth/calendar',
       'https://www.googleapis.com/auth/gmail.modify',
+      'https://www.googleapis.com/auth/gmail.settings.basic',
     ].join(' '),
     access_type:   'offline',
     prompt:        'consent',

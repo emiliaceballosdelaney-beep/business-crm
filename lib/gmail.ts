@@ -16,6 +16,7 @@ export type GmailMessageSummary = {
 
 export type GmailMessageFull = GmailMessageSummary & {
   body:            string  // decoded plain text
+  htmlBody:        string  // raw HTML for iframe rendering
   emailMessageId:  string  // Message-ID header (for In-Reply-To threading)
   emailReferences: string  // References header
 }
@@ -101,6 +102,24 @@ export function extractPlainBody(payload: Record<string, unknown>): string {
 
   if (mimeType === 'text/html' && body?.data) return stripHtml(decodeBase64url(body.data))
   if (body?.data) return decodeBase64url(body.data)
+  return ''
+}
+
+export function extractHtmlBody(payload: Record<string, unknown>): string {
+  const mimeType = payload?.mimeType as string | undefined
+  const body     = payload?.body as { data?: string } | undefined
+  const parts    = payload?.parts as Array<Record<string, unknown>> | undefined
+
+  if (mimeType === 'text/html' && body?.data) return decodeBase64url(body.data)
+
+  if (parts) {
+    const html = parts.find(p => (p.mimeType as string) === 'text/html')
+    if (html) { const b = html.body as { data?: string }; if (b?.data) return decodeBase64url(b.data) }
+    for (const part of parts) {
+      if (part.parts) { const nested = extractHtmlBody(part); if (nested) return nested }
+    }
+  }
+
   return ''
 }
 
@@ -196,6 +215,7 @@ export async function getGmailMessage(accessToken: string, messageId: string): P
     isUnread:        (data.labelIds as string[] ?? []).includes('UNREAD'),
     isStarred:       (data.labelIds as string[] ?? []).includes('STARRED'),
     body:            extractPlainBody(data.payload ?? {}),
+    htmlBody:        extractHtmlBody(data.payload ?? {}),
     emailMessageId:  h['message-id'] ?? '',
     emailReferences: h['references'] ?? '',
   }
@@ -225,6 +245,7 @@ export async function getGmailThread(accessToken: string, threadId: string): Pro
         isUnread:        (msg.labelIds as string[] ?? []).includes('UNREAD'),
         isStarred:       (msg.labelIds as string[] ?? []).includes('STARRED'),
         body:            extractPlainBody((msg.payload as Record<string, unknown>) ?? {}),
+        htmlBody:        extractHtmlBody((msg.payload as Record<string, unknown>) ?? {}),
         emailMessageId:  h['message-id'] ?? '',
         emailReferences: h['references'] ?? '',
       }

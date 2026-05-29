@@ -39,19 +39,27 @@ const LABEL = {
 export default function TaskForm({ isOpen, onClose, prefillClientId, prefillMilestoneId, prefillProjectId, initialData }: Props) {
   const router = useRouter()
   const isEdit = !!initialData
-  const [clients, setClients]   = useState<{ id: string; name: string }[]>([])
-  const [title, setTitle]       = useState('')
-  const [clientId, setClientId] = useState(prefillClientId ?? '')
-  const [priority, setPriority] = useState('medium')
-  const [dueDate, setDueDate]   = useState('')
-  const [notes, setNotes]       = useState('')
-  const [loading, setLoading]   = useState(false)
-  const [error, setError]       = useState('')
+  const [clients,    setClients]    = useState<{ id: string; name: string }[]>([])
+  const [projects,   setProjects]   = useState<{ id: string; title: string }[]>([])
+  const [milestones, setMilestones] = useState<{ id: string; title: string }[]>([])
+  const [title,       setTitle]       = useState('')
+  const [clientId,    setClientId]    = useState(prefillClientId ?? '')
+  const [projectId,   setProjectId]   = useState(prefillProjectId ?? '')
+  const [milestoneId, setMilestoneId] = useState(prefillMilestoneId ?? '')
+  const [priority,    setPriority]    = useState('medium')
+  const [dueDate,     setDueDate]     = useState('')
+  const [notes,       setNotes]       = useState('')
+  const [loading,     setLoading]     = useState(false)
+  const [error,       setError]       = useState('')
 
   useEffect(() => {
     if (!isOpen) return
     supabase.from('clients').select('id, name').eq('startup_id', PROSPER_STARTUP_ID).order('name')
       .then(({ data }) => setClients(data ?? []))
+    supabase.from('projects').select('id, title').eq('startup_id', PROSPER_STARTUP_ID).order('title')
+      .then(({ data }) => setProjects(data ?? []))
+    supabase.from('milestones').select('id, title').eq('startup_id', PROSPER_STARTUP_ID).order('title')
+      .then(({ data }) => setMilestones(data ?? []))
     if (initialData) {
       setTitle(initialData.title)
       setClientId(initialData.client_id ?? '')
@@ -60,13 +68,17 @@ export default function TaskForm({ isOpen, onClose, prefillClientId, prefillMile
       setNotes(initialData.description ?? '')
     } else {
       setTitle(''); setClientId(prefillClientId ?? ''); setPriority('medium'); setDueDate(''); setNotes('')
+      setProjectId(prefillProjectId ?? ''); setMilestoneId(prefillMilestoneId ?? '')
     }
     setError('')
   }, [isOpen])
 
   if (!isOpen) return null
 
-  const reset = () => { setTitle(''); setClientId(prefillClientId ?? ''); setPriority('medium'); setDueDate(''); setNotes(''); setError('') }
+  const reset = () => {
+    setTitle(''); setClientId(prefillClientId ?? ''); setPriority('medium'); setDueDate(''); setNotes('')
+    setProjectId(prefillProjectId ?? ''); setMilestoneId(prefillMilestoneId ?? ''); setError('')
+  }
   const handleClose = () => { reset(); onClose() }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,7 +100,7 @@ export default function TaskForm({ isOpen, onClose, prefillClientId, prefillMile
     } else {
       const { data: inserted, error: err } = await supabase
         .from('tasks')
-        .insert({ ...payload, startup_id: PROSPER_STARTUP_ID, status: 'pending', milestone_id: prefillMilestoneId || null, project_id: prefillProjectId || null })
+        .insert({ ...payload, startup_id: PROSPER_STARTUP_ID, status: 'pending', milestone_id: milestoneId || null, project_id: projectId || null })
         .select('id')
         .single()
       setLoading(false)
@@ -99,8 +111,8 @@ export default function TaskForm({ isOpen, onClose, prefillClientId, prefillMile
           taskTitle: trimmedTitle,
           content: 'Task created',
           startupId: PROSPER_STARTUP_ID,
-          milestoneId: prefillMilestoneId || null,
-          projectId: prefillProjectId || null,
+          milestoneId: milestoneId || null,
+          projectId: projectId || null,
         })
       }
     }
@@ -140,6 +152,25 @@ export default function TaskForm({ isOpen, onClose, prefillClientId, prefillMile
               {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
+
+          {!isEdit && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+              <div>
+                <label style={LABEL}>Project</label>
+                <select style={INPUT} value={projectId} onChange={e => setProjectId(e.target.value)} disabled={loading}>
+                  <option value="">No project</option>
+                  {projects.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={LABEL}>Milestone</label>
+                <select style={INPUT} value={milestoneId} onChange={e => setMilestoneId(e.target.value)} disabled={loading}>
+                  <option value="">No milestone</option>
+                  {milestones.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
             <div>

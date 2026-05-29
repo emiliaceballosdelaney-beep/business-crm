@@ -187,6 +187,17 @@ export default function InboxReadingPane({
               <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
                 <Loader2 size={20} style={{ color: '#AB655C', animation: 'spin 1s linear infinite' }} />
               </div>
+            ) : fullMessage?.htmlBody ? (
+              <iframe
+                srcDoc={fullMessage.htmlBody}
+                sandbox="allow-same-origin allow-popups"
+                title="email-body"
+                style={{ width: '100%', border: 'none', minHeight: 300, display: 'block' }}
+                onLoad={e => {
+                  const f = e.currentTarget
+                  if (f.contentDocument?.body) f.style.height = `${f.contentDocument.body.scrollHeight + 32}px`
+                }}
+              />
             ) : (
               <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, lineHeight: 1.85, color: '#4D4D4D', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                 {fullMessage?.body || selected.snippet}

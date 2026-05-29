@@ -4,8 +4,14 @@ import type { GmailSendAs } from '@/lib/google'
 
 interface Props {
   value:    string
-  onChange: (email: string) => void
+  onChange: (formatted: string) => void
   disabled?: boolean
+}
+
+function formatSendAs(s: GmailSendAs): string {
+  return s.displayName && s.displayName !== s.sendAsEmail
+    ? `${s.displayName} <${s.sendAsEmail}>`
+    : s.sendAsEmail
 }
 
 export default function SendAsDropdown({ value, onChange, disabled }: Props) {
@@ -19,7 +25,7 @@ export default function SendAsDropdown({ value, onChange, disabled }: Props) {
         setList(items)
         if (!value && items.length) {
           const def = items.find(i => i.isDefault) ?? items[0]
-          onChange(def.sendAsEmail)
+          onChange(formatSendAs(def))
         }
       })
       .catch(() => {})
@@ -38,7 +44,7 @@ export default function SendAsDropdown({ value, onChange, disabled }: Props) {
       }}
     >
       {list.map(s => (
-        <option key={s.sendAsEmail} value={s.sendAsEmail}>
+        <option key={s.sendAsEmail} value={formatSendAs(s)}>
           {s.displayName} &lt;{s.sendAsEmail}&gt;
         </option>
       ))}

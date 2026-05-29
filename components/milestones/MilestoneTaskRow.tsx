@@ -96,7 +96,7 @@ export default function MilestoneTaskRow({ task, milestoneId, projectId }: { tas
 
         <div className="flex items-center gap-3 flex-shrink-0">
           {task.due_date && !completed && (() => {
-            const dueDate = new Date(task.due_date + 'T00:00:00')
+            const dueDate = new Date(task.due_date.slice(0, 10) + 'T12:00:00')
             const urgent = dueDate <= new Date(Date.now() + 24 * 60 * 60 * 1000)
             return (
               <span className={`font-label text-[11px] ${urgent ? 'text-red-600 font-semibold' : 'text-[#8d4c44]'}`}>

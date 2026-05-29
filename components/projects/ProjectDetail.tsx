@@ -99,7 +99,7 @@ export default function ProjectDetail({ project, linkedTasks, activityNotes }: P
         initialData={{ id: project.id, title: project.title, client_id: project.client_id, description: project.description, due_date: project.due_date, status: project.status }}
       />
       <ConfirmDelete isOpen={deleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={handleDelete} itemName={project.title} entityType="Project" />
-      <TaskForm isOpen={addTaskOpen} onClose={() => { setAddTaskOpen(false); router.refresh() }} prefillProjectId={project.id} prefillClientId={project.client_id ?? undefined} />
+      <TaskForm isOpen={addTaskOpen} onClose={() => setAddTaskOpen(false)} prefillProjectId={project.id} prefillClientId={project.client_id ?? undefined} />
 
       <Link href="/projects" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#9c9490', textDecoration: 'none', fontFamily: 'var(--font-body)', marginBottom: 24 }}>
         <ArrowLeft size={14} /> Back to Projects

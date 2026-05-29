@@ -1,47 +1,54 @@
 # Startup-Dashboard — STATUS.md
 
 ## Handoff
-_Last updated: 2026-05-26 — CRM Session 21_
+_Last updated: 2026-05-28 — CRM Session 24_
 
-**Status:** All changes deployed to production. Clean stop.
+**Status:** Fully deployed and working. All Session 23 fixes live. Meetings page, email compose, and alias dropdown all functioning correctly in production.
 **Just completed:**
-- Transparent logo: background removed (Python Pillow) → `Startup-Dashboard/public/prosper_with_em_logo_transparent.png`. Deployed ✅
-- Logo added to email signature (40px tall); "Prosper with Em" text line removed — logo replaces it. Deployed ✅
-- Bug fix: sent HTML emails showed raw HTML tags in thread view — `extractPlainBody` in `lib/gmail.ts` now calls `stripHtml()` when falling back to HTML-only body. Deployed ✅
-- Editable subject in reply compose — `replySubject` state in `InboxReadingPane.tsx`, pre-fills `Re: {subject}`, fully editable input. Deployed ✅
-- Tiptap rich text editor (`RichTextEditor.tsx`) — Bold, Italic, Underline, Bullet list, Ordered list, Font size. Replaces textarea in both Reply and Compose New Email. Deployed ✅
-- Bug fix: bullet/numbered lists not rendering — Tailwind preflight resets `list-style: none`; added explicit `list-style-type: disc/decimal` + `display: list-item` to `.rte-content` in `globals.css`. Deployed ✅
-- Editable signature (`SignatureEditor.tsx`, `lib/useSignature.ts`) — pencil "Edit signature" toggle in Reply and Compose; one text line per field (first = bold name, URLs auto-link); persists to `localStorage` (`crmSignatureText` key); `signatureHtml` passed with every send/reply/draft request. Deployed ✅
-- `buildMimeRaw` updated: body is now always Tiptap HTML passed directly (removed `textToHtml()` call); accepts optional `signatureHtml` param; server uses custom sig if provided, falls back to `HTML_SIGNATURE`. Deployed ✅
+- Deployed all 9 Session 23 bug fixes to production (`vercel --prod`, 28 pages, 0 errors)
+- Diagnosed and fixed Turbopack fatal panic loop on localhost — dev server now requires `--webpack` flag
+- Fixed Meetings page: when Google not connected, shows empty "Connect Google" state instead of displaying Supabase-stored meetings
+- Deployed meetings page fix to production
+- Diagnosed missing Send As aliases — Google Workspace domain aliases need manual setup in Gmail Settings → Accounts → "Send mail as" (not auto-populated)
+- Emilia manually added hello@, sales@, support@ aliases in Gmail settings — all now load in compose/reply From dropdown
+- Emilia set display name on primary emilia@ Send As entry in Gmail settings — name now shows correctly
+- Google reconnected (Meetings page → Disconnect → Reconnect) — gmail.settings.basic scope now active
 
-**Stopped at:** Clean stop. Everything deployed and verified in production.
-**Next action:** Review and approve the 5 email automation templates, then restore `RESEND_API_KEY` in Vercel env vars to re-enable automations (no redeploy needed).
+**Stopped at:** Clean stop. Everything deployed and working.
+**Next action:** Review the 5 email automation templates in `lib/email/templates/` and decide whether to approve or edit before restoring RESEND_API_KEY.
 **Open tasks:**
-- [ ] Email copy review — all 5 templates in `lib/email/templates/` need Emilia's approval before RESEND_API_KEY is restored
-- [ ] Restore RESEND_API_KEY in Vercel env vars to re-enable email automations (no redeploy needed)
+- [ ] Email template review — Emilia to approve or edit 5 templates before restoring RESEND_API_KEY
+- [ ] Restore RESEND_API_KEY in Vercel env vars after template approval (no redeploy needed — just update the env var in Vercel dashboard)
 - [ ] Confirm Resend domain still verified at resend.com → Domains
 **Open questions:**
-- Rich HTML rendering for incoming emails (newsletters, Google Workspace emails show raw plain-text with `<url>` brackets) — could add iframe/sandboxed HTML rendering later
+- Template 3 (post-discovery-thanks): does "I'm already thinking about how I can support you on this journey" feel right for someone who hasn't signed on yet?
+- Template 5 (idle-nudge): does the pain point list (debt, investing, stress) match the audience who'd receive this?
 - Emilia mentioned wanting a future skill for auto-tagging emails — no action yet, just flagged
 
 **Critical context:**
+- **CRM CODE IS IN `business-crm/`** — NOT in the top-level `Startup-Dashboard/` folder. Run all dev commands from `business-crm/`: `cd business-crm && npm run dev -- --port 3001 --webpack` / `vercel --prod`.
+- **Dev server MUST use `--webpack` flag** — Turbopack has a fatal panic loop on this project causing flickering/unclickable UI. Always: `npm run dev -- --port 3001 --webpack`.
 - **DEPLOY RULE:** Do NOT run `vercel --prod` until Emilia has tested on localhost and explicitly says to deploy.
-- **Tiptap body flow:** All compose/reply body state is now Tiptap HTML (NOT plain text). `buildMimeRaw` in `lib/gmail.ts` no longer calls `textToHtml()` — body is passed directly. `canSend` logic strips HTML tags to check actual content (`body.replace(/<[^>]*>/g, '').trim()`).
-- **`@tiptap/extension-font-size` does NOT exist on npm.** Font size is implemented via a custom inline `Extension.create()` inside `RichTextEditor.tsx` — do not try to install that package.
-- **Signature architecture:** Text stored in `localStorage` key `crmSignatureText`. Hook at `lib/useSignature.ts`. `buildSignatureHtml()` converts text lines → HTML (first line = bold name, domain-like lines auto-link). Logo is always fixed in the signature (not editable). `signatureHtml` is sent as a field in every compose/reply/draft fetch body; server uses it over `HTML_SIGNATURE` if provided.
-- **Transparent logo:** `Startup-Dashboard/public/prosper_with_em_logo_transparent.png`. Preview components use relative path `/prosper_with_em_logo_transparent.png`. Sent emails use absolute URL `https://startup-dashboard-five.vercel.app/prosper_with_em_logo_transparent.png`. Email clients require absolute URLs for images.
+- **Dev port:** CRM runs on port 3001 — port 3000 is used by the client portal.
+- **Gmail Send As aliases:** hello@, sales@, support@ are configured in Gmail Settings → Accounts → "Send mail as". These are NOT auto-populated from Google Workspace — they had to be added manually and verified. Display name for emilia@ set via "edit info" on that entry (not Gmail General → Name).
+- **MilestoneTaskRow due_date:** always use `.slice(0, 10) + 'T12:00:00'` when parsing task due dates from DB — the column may contain full ISO timestamps. T12:00:00 (noon) prevents UTC off-by-one in Pacific time.
+- **Tiptap body flow:** All compose/reply body state is Tiptap HTML (NOT plain text). `buildMimeRaw` in `lib/gmail.ts` no longer calls `textToHtml()`. `canSend` strips HTML tags to check content (`body.replace(/<[^>]*>/g, '').trim()`).
+- **`@tiptap/extension-font-size` does NOT exist on npm.** Font size is a custom inline `Extension.create()` inside `RichTextEditor.tsx`.
+- **Signature architecture:** Text in `localStorage` key `crmSignatureText`. Hook at `lib/useSignature.ts`. Logo always fixed. `signatureHtml` sent with every compose/reply/draft; server prefers it over `HTML_SIGNATURE`.
+- **Transparent logo:** `public/prosper_with_em_logo_transparent.png`. Preview uses relative path; sent emails use absolute URL `https://startup-dashboard-five.vercel.app/prosper_with_em_logo_transparent.png`.
 - **`lib/gmail.ts`** contains all Gmail types and functions. `lib/google.ts` re-exports everything — all existing imports work unchanged.
 - **`InboxThreadView.tsx`** — thread cache in InboxTab keyed by `threadId` (Map ref). Newest message never collapses. ChevronDown = collapsed, ChevronUp = expanded.
-- **Google is reconnected with `gmail.modify` scope** — Archive, Mark, Reply, Star all work in production. No need to reconnect unless tokens are revoked.
-- **`email_labels` table** in Supabase stores CRM tags keyed by Gmail `message_id` (TEXT PRIMARY KEY, labels TEXT[]). CRM-only, not synced to Gmail.
+- **Google connected with `gmail.modify` + `gmail.settings.basic` scopes** — Archive, Mark, Reply, Star, Send As aliases all work in production.
+- **`email_labels` table** in Supabase — CRM tags keyed by Gmail `message_id` (TEXT PRIMARY KEY, labels TEXT[]). Not synced back to Gmail.
 - **InboxMessageRow uses `<div role="button">`**, not `<button>`, to avoid nested-button HTML error.
-- **Folder queries:** inbox=`in:inbox`, starred=`is:starred`, archived=`-in:inbox -in:trash -in:spam`, all=`in:all`, trash=`in:trash`, drafts = Gmail Drafts API (different endpoint, not messages)
-- **RESEND_API_KEY is `disabled` in Vercel** — automations paused. Restore real key after template review (no redeploy needed).
-- **Google Workspace:** primary account `emilia@prosperwithem.com`. Aliases: hello@, sales@, support@. GoDaddy DNS has Google MX + Resend TXT records.
-- **Google Cloud project** stays in personal account (`emilia.ceballos.delaney@gmail.com`) — `emilia@prosperwithem.com` added as OAuth test user.
+- **Folder queries:** inbox=`in:inbox`, starred=`is:starred`, archived=`-in:inbox -in:trash -in:spam`, all=`in:all`, trash=`in:trash`, drafts = Gmail Drafts API.
+- **RESEND_API_KEY is `disabled` in Vercel** — automations paused. Restore after template approval (no redeploy needed).
+- **Google Workspace:** primary `emilia@prosperwithem.com`. Aliases: hello@, sales@, support@. GoDaddy DNS has Google MX + Resend TXT records.
+- **Google Cloud project** stays in personal account (`emilia.ceballos.delaney@gmail.com`) — `emilia@prosperwithem.com` is OAuth test user.
 - **prosperwithem.com DNS is on GoDaddy** (domaincontrol.com nameservers).
 - **email_log column is `sent_at`** (NOT `created_at`) — do not revert.
 - **ScheduledEmailsPanel + IntakeResponsesCard** in ClientEmailsTab only (not OverviewTab).
+- **CRM custom domain:** `crm.prosperwithem.com` (CNAME on GoDaddy, connected to Vercel Production). Both URLs still work.
 - App is **Prosper with Em** internal CRM only. Pipeline stages: `lead | discovery | active | paused | cold`
 
 ---
@@ -387,3 +394,24 @@ Pairs displayed side-by-side in a full-width card above Financial Details.
 | 2026-05-26 | (CRM Session 21) Created `components/email/SignatureEditor.tsx` — shows signature preview with pencil "Edit signature" toggle; textarea to edit text lines; Save/Cancel. Logo always fixed, only text below is editable. Deployed. |
 | 2026-05-26 | (CRM Session 21) Added `signatureHtml?: string` to `ComposeOpts` type in `lib/gmail.ts`; threaded through `sendGmailReply`, `sendGmailMessage`, `createGmailDraft`. Server uses custom sig if provided, falls back to `HTML_SIGNATURE`. Deployed. |
 | 2026-05-26 | (CRM Session 21) Wired `useSignature` hook into `InboxReadingPane.tsx` (reply) and `ComposeModal.tsx` (compose/draft) — `signatureHtml` passed in every fetch body; `SignatureEditor` rendered in both. `ComposeForm.tsx` accepts `sigText`/`onSigSave` props. Deployed. |
+| 2026-05-28 | (CRM Session 22) Reviewed all 5 email automation templates (`lib/email/templates/`) — discovery-invite, intake-followup, post-discovery-thanks, post-discovery-checkin, idle-nudge. Copy is on-voice and warm. Template approval deferred by Emilia pending functionality fixes. |
+| 2026-05-28 | (CRM Session 22) Diagnosed 6 bugs: (1) TaskForm missing Project/Milestone dropdowns, (2) double `router.refresh()` in ProjectDetail causing "This page couldn't load" on task add, (3) HTML email bodies rendering as stripped plain text, (4) signature logo invisible in sent email thread view + `DEFAULT_SIG_TEXT` typo `prosperwith.com`, (5) `gmail.settings.basic` OAuth scope missing → SendAsDropdown empty → can't select alias, (6) SendAsDropdown passes bare email → From header missing display name → sender shows as email address. No code changed. |
+| 2026-05-28 | (CRM Session 22) Produced 8-file fix plan ready to implement in Session 23. See Handoff Critical Context for full details. |
+| 2026-05-29 | (CRM Session 23) Fix 1: `lib/gmail.ts` — added `extractHtmlBody()` function; added `htmlBody: string` to `GmailMessageFull`; populated in `getGmailMessage()` and `getGmailThread()`. |
+| 2026-05-29 | (CRM Session 23) Fix 2: `app/api/auth/google/connect/route.ts` — added `gmail.settings.basic` scope to OAuth flow. After deploy: Emilia must Disconnect → Reconnect Google on Meetings page. |
+| 2026-05-29 | (CRM Session 23) Fix 3: `components/email/SendAsDropdown.tsx` — added `formatSendAs()` helper; option values now `"Name <email>"` format; initial default also uses formatted value. Fixes From header missing display name. |
+| 2026-05-29 | (CRM Session 23) Fix 4: `lib/useSignature.ts` — corrected `DEFAULT_SIG_TEXT` typo: `prosperwith.com` → `prosperwithem.com`. |
+| 2026-05-29 | (CRM Session 23) Fix 5: `components/email/InboxReadingPane.tsx` — single messages with `htmlBody` now render in sandboxed iframe with auto-height; falls back to plain `body` text if no HTML. |
+| 2026-05-29 | (CRM Session 23) Fix 6: `components/email/InboxThreadView.tsx` — same iframe treatment for thread message bodies. |
+| 2026-05-29 | (CRM Session 23) Fix 7: `components/forms/TaskForm.tsx` — added Project + Milestone `<select>` dropdowns (fetched alongside clients in `useEffect`; shown only on create, not edit); insert payload now uses state values instead of prefill props. |
+| 2026-05-29 | (CRM Session 23) Fix 8: `components/projects/ProjectDetail.tsx` — removed `router.refresh()` from TaskForm `onClose` wrapper (TaskForm already calls it internally; double call caused navigation failure). |
+| 2026-05-29 | (CRM Session 23) `tsc --noEmit` clean, `next build` clean (28 pages, 0 errors). All fixes verified at build level. |
+| 2026-05-29 | (CRM Session 23) Fix 9: `components/milestones/MilestoneTaskRow.tsx` — found during localhost test: project pages with tasks were crashing with `Invalid time value`. Root cause: `task.due_date + 'T00:00:00'` on a value that already had a time component. Fixed with `.slice(0, 10) + 'T12:00:00'` (noon avoids UTC off-by-one in Pacific time). |
+| 2026-05-28 | (CRM Session 24) Deployed all 9 Session 23 bug fixes to production — `cd business-crm && vercel --prod`, build clean (28 pages, 0 errors). Live at https://crm.prosperwithem.com. |
+| 2026-05-28 | (CRM Session 24) Diagnosed Turbopack fatal panic loop causing flickering/unclickable UI on localhost. Fixed by running dev server with `--webpack` flag: `npm run dev -- --port 3001 --webpack`. |
+| 2026-05-28 | (CRM Session 24) Fixed Meetings page — when `!googleConnected`, now shows "Connect Google to sync your meetings here" empty state instead of displaying Supabase-stored meetings. `components/meetings/MeetingsPage.tsx`. |
+| 2026-05-28 | (CRM Session 24) Deployed meetings page fix to production — `vercel --prod`, build clean. |
+| 2026-05-28 | (CRM Session 24) Diagnosed missing Send As aliases — Google Workspace domain aliases require manual setup in Gmail Settings → Accounts → "Send mail as". Not auto-populated by API. |
+| 2026-05-28 | (CRM Session 24) Emilia added hello@, sales@, support@ as Send As aliases in Gmail settings. All three now load in CRM compose/reply From dropdown. |
+| 2026-05-28 | (CRM Session 24) Emilia set display name on primary emilia@ Send As entry via Gmail Settings → Accounts → edit info. Name now shows correctly in From dropdown. |
+| 2026-05-28 | (CRM Session 24) Emilia reconnected Google on Meetings page — gmail.settings.basic scope now fully active in production. |

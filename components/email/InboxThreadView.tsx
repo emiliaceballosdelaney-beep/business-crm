@@ -104,9 +104,22 @@ export default function InboxThreadView({ thread, selectedId, matchedClient }: P
               )}
             </div>
             {/* Body */}
-            <div style={{ marginTop: 12, fontFamily: 'var(--font-body)', fontSize: 14, lineHeight: 1.85, color: '#4D4D4D', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-              {msg.body || msg.snippet}
-            </div>
+            {msg.htmlBody ? (
+              <iframe
+                srcDoc={msg.htmlBody}
+                sandbox="allow-same-origin allow-popups"
+                title={`email-body-${msg.id}`}
+                style={{ width: '100%', border: 'none', minHeight: 200, display: 'block', marginTop: 12 }}
+                onLoad={e => {
+                  const f = e.currentTarget
+                  if (f.contentDocument?.body) f.style.height = `${f.contentDocument.body.scrollHeight + 32}px`
+                }}
+              />
+            ) : (
+              <div style={{ marginTop: 12, fontFamily: 'var(--font-body)', fontSize: 14, lineHeight: 1.85, color: '#4D4D4D', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                {msg.body || msg.snippet}
+              </div>
+            )}
           </div>
         )
       })}
