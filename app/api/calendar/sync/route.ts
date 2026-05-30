@@ -58,8 +58,11 @@ function cleanNotes(description: string | undefined, meetingUrl: string | null):
 
 const HOLIDAY_RE = /\b(holiday|day off|day-off|observance|new year|valentine|st\.?\s?patrick|saint patrick|easter|mother.?s day|memorial day|father.?s day|juneteenth|flag day|independence day|fourth of july|4th of july|labor day|columbus day|indigenous peoples|halloween|veterans?\s?day|thanksgiving|christmas|hanukkah|chanukah|kwanzaa|martin luther king|mlk day|presidents?\s?day|mardi gras|earth day|tax day)\b/i
 
+// Titles that are always personal regardless of attendees (travel, accommodation, etc.)
+const ALWAYS_PERSONAL_RE = /\b(stay at|staying at|check.?in|check.?out|flight|hotel|airbnb|vrbo|hostel|resort|road trip|travel to|flying to|drive to)\b/i
+
 // Infer meeting type from title keywords + calendar name.
-// Client match takes priority — if a client is attending, it's a client-facing meeting.
+// Holidays and always-personal patterns are checked before client match.
 function inferMeetingType(
   title: string,
   calendarName: string,
@@ -68,6 +71,7 @@ function inferMeetingType(
   const t = title.toLowerCase()
 
   if (HOLIDAY_RE.test(t)) return 'holiday'
+  if (ALWAYS_PERSONAL_RE.test(t)) return 'personal'
 
   if (hasClientMatch) {
     return /discovery|intro|consult/.test(t) ? 'discovery' : 'session'
