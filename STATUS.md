@@ -1,24 +1,25 @@
 # Startup-Dashboard — STATUS.md
 
 ## Handoff
-_Last updated: 2026-05-28 — CRM Session 24_
+_Last updated: 2026-05-30 — CRM Session 25_
 
-**Status:** Fully deployed and working. All Session 23 fixes live. Meetings page, email compose, and alias dropdown all functioning correctly in production.
+**Status:** Fully deployed and working. All Session 25 changes live in production at crm.prosperwithem.com.
 **Just completed:**
-- Deployed all 9 Session 23 bug fixes to production (`vercel --prod`, 28 pages, 0 errors)
-- Diagnosed and fixed Turbopack fatal panic loop on localhost — dev server now requires `--webpack` flag
-- Fixed Meetings page: when Google not connected, shows empty "Connect Google" state instead of displaying Supabase-stored meetings
-- Deployed meetings page fix to production
-- Diagnosed missing Send As aliases — Google Workspace domain aliases need manual setup in Gmail Settings → Accounts → "Send mail as" (not auto-populated)
-- Emilia manually added hello@, sales@, support@ aliases in Gmail settings — all now load in compose/reply From dropdown
-- Emilia set display name on primary emilia@ Send As entry in Gmail settings — name now shows correctly
-- Google reconnected (Meetings page → Disconnect → Reconnect) — gmail.settings.basic scope now active
+- Fixed home page task checkboxes — were visual-only; now optimistically toggle status and write to DB (`components/home/HomeTasksSection.tsx`)
+- Added multi-calendar Google Calendar sync — replaced hardcoded `'primary'` with CalendarList API; now auto-discovers all visible calendars (including shared ones) and syncs from all of them with graceful per-calendar failure handling
+- Added `source_calendar TEXT` column to `meetings` table (schema/phase16-source-calendar.sql, applied in Supabase)
+- Sync now stores calendar display name per meeting (`source_calendar` field upserted on every sync)
+- Emilia shared personal Gmail calendar (`emilia.delaney@gmail.com`) with workspace account (`emilia@prosperwithem.com`) so both calendars sync
+- Emilia renamed calendars: personal = "Emilia Delaney", workspace = "Emilia Ceballos"
+- Calendar tag (`📅 Emilia Delaney` / `📅 Emilia Ceballos`) now shows on: list view cards, DayPanel cards in calendar view, Client Detail Meetings tab cards, and Meeting Detail modal
+- Fixed multiple TypeScript propagation errors for `source_calendar` across `home/types.ts`, `HomeMeetingsSection.tsx` (`toDetailRow`), `clients/types.ts` (`MeetingDetailRow`), all meetings DB queries
+- Added sync logging (`console.log` of calendars found + events per calendar) for future debugging
 
 **Stopped at:** Clean stop. Everything deployed and working.
-**Next action:** Review the 5 email automation templates in `lib/email/templates/` and decide whether to approve or edit before restoring RESEND_API_KEY.
+**Next action:** Resume email template review — open `lib/email/templates/` and walk through all 5 templates with Emilia, then restore RESEND_API_KEY in Vercel env vars.
 **Open tasks:**
 - [ ] Email template review — Emilia to approve or edit 5 templates before restoring RESEND_API_KEY
-- [ ] Restore RESEND_API_KEY in Vercel env vars after template approval (no redeploy needed — just update the env var in Vercel dashboard)
+- [ ] Restore RESEND_API_KEY in Vercel env vars after template approval (no redeploy needed)
 - [ ] Confirm Resend domain still verified at resend.com → Domains
 **Open questions:**
 - Template 3 (post-discovery-thanks): does "I'm already thinking about how I can support you on this journey" feel right for someone who hasn't signed on yet?
@@ -30,14 +31,18 @@ _Last updated: 2026-05-28 — CRM Session 24_
 - **Dev server MUST use `--webpack` flag** — Turbopack has a fatal panic loop on this project causing flickering/unclickable UI. Always: `npm run dev -- --port 3001 --webpack`.
 - **DEPLOY RULE:** Do NOT run `vercel --prod` until Emilia has tested on localhost and explicitly says to deploy.
 - **Dev port:** CRM runs on port 3001 — port 3000 is used by the client portal.
-- **Gmail Send As aliases:** hello@, sales@, support@ are configured in Gmail Settings → Accounts → "Send mail as". These are NOT auto-populated from Google Workspace — they had to be added manually and verified. Display name for emilia@ set via "edit info" on that entry (not Gmail General → Name).
-- **MilestoneTaskRow due_date:** always use `.slice(0, 10) + 'T12:00:00'` when parsing task due dates from DB — the column may contain full ISO timestamps. T12:00:00 (noon) prevents UTC off-by-one in Pacific time.
-- **Tiptap body flow:** All compose/reply body state is Tiptap HTML (NOT plain text). `buildMimeRaw` in `lib/gmail.ts` no longer calls `textToHtml()`. `canSend` strips HTML tags to check content (`body.replace(/<[^>]*>/g, '').trim()`).
+- **Multi-calendar sync:** `lib/google.ts` → `listCalendars()` fetches all calendars via CalendarList API (filters out `freeBusyReader`). `app/api/calendar/sync/route.ts` uses `Promise.allSettled` per calendar so a single bad calendar doesn't crash the whole sync. `source_calendar` (display name) is written to the `meetings` table on every upsert.
+- **Calendar sharing:** Emilia's personal Gmail calendar (`emilia.delaney@gmail.com`) is shared with `emilia@prosperwithem.com` with "See all event details" access. If personal calendar events stop syncing, check that the share is still active in Google Calendar → Settings → Share with specific people.
+- **Calendar names:** personal = "Emilia Delaney", workspace = "Emilia Ceballos". These are display names stored in `source_calendar` column — if she renames them in Google, existing meetings will still show old names until re-synced.
+- **`source_calendar` column:** Added in `schema/phase16-source-calendar.sql`. Present in `MeetingRow` (MeetingCard.tsx), `MeetingDetailRow` (clients/types.ts), and `home/types.ts MeetingRow`. All meetings queries include it in SELECT. Displayed on list cards, DayPanel cards, MeetingsTab cards, and detail modal. Calendar grid pills (month/week cells) are too small — no tag there by design.
+- **Gmail Send As aliases:** hello@, sales@, support@ are configured in Gmail Settings → Accounts → "Send mail as". NOT auto-populated from Google Workspace — added manually.
+- **MilestoneTaskRow due_date:** always use `.slice(0, 10) + 'T12:00:00'` when parsing task due dates from DB — column may contain full ISO timestamps. T12:00:00 (noon) prevents UTC off-by-one in Pacific time.
+- **Tiptap body flow:** All compose/reply body state is Tiptap HTML (NOT plain text). `buildMimeRaw` in `lib/gmail.ts` no longer calls `textToHtml()`. `canSend` strips HTML tags to check content.
 - **`@tiptap/extension-font-size` does NOT exist on npm.** Font size is a custom inline `Extension.create()` inside `RichTextEditor.tsx`.
-- **Signature architecture:** Text in `localStorage` key `crmSignatureText`. Hook at `lib/useSignature.ts`. Logo always fixed. `signatureHtml` sent with every compose/reply/draft; server prefers it over `HTML_SIGNATURE`.
+- **Signature architecture:** Text in `localStorage` key `crmSignatureText`. Hook at `lib/useSignature.ts`. Logo always fixed. `signatureHtml` sent with every compose/reply/draft.
 - **Transparent logo:** `public/prosper_with_em_logo_transparent.png`. Preview uses relative path; sent emails use absolute URL `https://startup-dashboard-five.vercel.app/prosper_with_em_logo_transparent.png`.
-- **`lib/gmail.ts`** contains all Gmail types and functions. `lib/google.ts` re-exports everything — all existing imports work unchanged.
-- **`InboxThreadView.tsx`** — thread cache in InboxTab keyed by `threadId` (Map ref). Newest message never collapses. ChevronDown = collapsed, ChevronUp = expanded.
+- **`lib/gmail.ts`** contains all Gmail types and functions. `lib/google.ts` re-exports everything.
+- **`InboxThreadView.tsx`** — thread cache in InboxTab keyed by `threadId` (Map ref). Newest message never collapses.
 - **Google connected with `gmail.modify` + `gmail.settings.basic` scopes** — Archive, Mark, Reply, Star, Send As aliases all work in production.
 - **`email_labels` table** in Supabase — CRM tags keyed by Gmail `message_id` (TEXT PRIMARY KEY, labels TEXT[]). Not synced back to Gmail.
 - **InboxMessageRow uses `<div role="button">`**, not `<button>`, to avoid nested-button HTML error.
@@ -415,3 +420,19 @@ Pairs displayed side-by-side in a full-width card above Financial Details.
 | 2026-05-28 | (CRM Session 24) Emilia added hello@, sales@, support@ as Send As aliases in Gmail settings. All three now load in CRM compose/reply From dropdown. |
 | 2026-05-28 | (CRM Session 24) Emilia set display name on primary emilia@ Send As entry via Gmail Settings → Accounts → edit info. Name now shows correctly in From dropdown. |
 | 2026-05-28 | (CRM Session 24) Emilia reconnected Google on Meetings page — gmail.settings.basic scope now fully active in production. |
+| 2026-05-30 | (CRM Session 25) Fixed home page task checkboxes — were visual-only; added `handleToggle` + Supabase update + optimistic state to `components/home/HomeTasksSection.tsx`. |
+| 2026-05-30 | (CRM Session 25) Added `listCalendars()` + `GCalendarListEntry` type to `lib/google.ts` — calls Google CalendarList API, filters out freeBusyReader-only calendars. |
+| 2026-05-30 | (CRM Session 25) Rewrote calendar sync in `app/api/calendar/sync/route.ts` — replaced hardcoded `tokens.calendar_id` with `listCalendars()` + `Promise.allSettled` per calendar; deduplicates by `google_event_id`; stores `source_calendar` (display name) on every upsert. |
+| 2026-05-30 | (CRM Session 25) Added `source_calendar TEXT` column to `meetings` table — `schema/phase16-source-calendar.sql` written and applied in Supabase. |
+| 2026-05-30 | (CRM Session 25) Added `source_calendar: string \| null` to `MeetingRow` in `components/meetings/MeetingCard.tsx` and updated meetings page query (`app/(dashboard)/meetings/page.tsx`) to include it. |
+| 2026-05-30 | (CRM Session 25) Added calendar tag (`📅 [name]`) to `MeetingCard.tsx` — shown inline after type badge and duration. |
+| 2026-05-30 | (CRM Session 25) Added Calendar row to `MeetingDetail.tsx` — shows source_calendar in detail modal when present. |
+| 2026-05-30 | (CRM Session 25) Added `source_calendar` to `home/types.ts` `MeetingRow` and `HomeMeetingsSection.tsx` `toDetailRow()` — fixed TypeScript build error. |
+| 2026-05-30 | (CRM Session 25) Updated `app/(dashboard)/home/page.tsx` meetings select query to include `source_calendar`. |
+| 2026-05-30 | (CRM Session 25) Added `source_calendar` to `MeetingDetailRow` in `components/clients/types.ts` and updated client detail meetings query (`app/(dashboard)/clients/[id]/page.tsx`). |
+| 2026-05-30 | (CRM Session 25) Added calendar tag to `components/clients/MeetingsTab.tsx` meeting cards. |
+| 2026-05-30 | (CRM Session 25) Added calendar tag to `MeetingsCalendar.tsx` DayPanel cards — shows below time/duration line. |
+| 2026-05-30 | (CRM Session 25) Added sync logging (`console.log` of calendars found + event counts) to sync route for debugging. |
+| 2026-05-30 | (CRM Session 25) Emilia shared personal Gmail calendar (`emilia.delaney@gmail.com`) with workspace account (`emilia@prosperwithem.com`); renamed calendars to "Emilia Delaney" (personal) and "Emilia Ceballos" (workspace). |
+| 2026-05-30 | (CRM Session 25) Diagnosed sync 401 issue — Emilia had disconnected Google before syncing; reconnected and confirmed sync working. |
+| 2026-05-30 | (CRM Session 25) All changes deployed to production — build clean (28+ pages, 0 errors). Live at https://crm.prosperwithem.com. |
