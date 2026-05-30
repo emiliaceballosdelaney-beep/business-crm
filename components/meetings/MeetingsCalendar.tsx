@@ -277,7 +277,7 @@ function DayPanel({ selectedDate, selectedMeetings, onSelect }: { selectedDate: 
         </div>
       ) : (
         selectedMeetings.map(m => {
-          const clientName  = m.client?.name ?? m.title
+          const clientName  = m.client?.name ?? null
           const meetingDate = new Date(m.date)
           const tc          = getTypeConfig(m.meeting_type)
           return (
@@ -292,7 +292,8 @@ function DayPanel({ selectedDate, selectedMeetings, onSelect }: { selectedDate: 
                   {tc.abbrev}
                 </div>
                 <div>
-                  <div className="text-[#4D4D4D] text-[13px] font-bold">{clientName}</div>
+                  <div className="text-[#4D4D4D] text-[13px] font-bold">{m.title}</div>
+                  {clientName && <div className="text-[11px] text-[#9c9490]">{clientName}</div>}
                   <span className="px-1.5 py-0.5 rounded text-[9px] inline-block font-semibold" style={{ backgroundColor: tc.badgeBg, color: tc.badgeColor }}>
                     {tc.label}
                   </span>

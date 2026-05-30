@@ -49,7 +49,7 @@ export default function MeetingCard({ meeting, past = false, onSelect }: Props) 
   const [expanded, setExpanded]     = useState(false)
   const [editOpen, setEditOpen]     = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const clientName = meeting.client?.name ?? meeting.title
+  const clientName = meeting.client?.name ?? null
   const typeConfig = getMeetingTypeConfig(meeting.meeting_type)
   const meetingDate = new Date(meeting.date)
   if (isNaN(meetingDate.getTime())) return null
@@ -102,7 +102,7 @@ export default function MeetingCard({ meeting, past = false, onSelect }: Props) 
         isOpen={deleteOpen}
         onClose={() => setDeleteOpen(false)}
         onConfirm={handleDelete}
-        itemName={clientName}
+        itemName={meeting.title}
         entityType="Meeting"
       />
 
@@ -120,8 +120,13 @@ export default function MeetingCard({ meeting, past = false, onSelect }: Props) 
         {/* Middle */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-body)', color: 'var(--foreground)', margin: '0 0 3px 0' }}>
-            {clientName}
+            {meeting.title}
           </p>
+          {clientName && (
+            <p style={{ fontSize: 11, fontFamily: 'var(--font-body)', color: 'var(--muted-foreground)', margin: '0 0 3px 0' }}>
+              {clientName}
+            </p>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ backgroundColor: typeConfig.badgeBg, color: typeConfig.badgeColor, fontSize: 10, padding: '2px 7px', borderRadius: 4, fontFamily: 'var(--font-body)', fontWeight: 600 }}>
               {typeConfig.label}

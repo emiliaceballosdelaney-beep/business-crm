@@ -109,7 +109,7 @@ export default function HomeMeetingsSection({ meetings }: { meetings: MeetingRow
         ) : (
           meetings.map((m) => {
             const client = Array.isArray(m.client) ? m.client[0] : m.client
-            const name = client?.name ?? m.title
+            const clientName = client?.name ?? null
             const meetingTime = new Date(m.date)
             if (isNaN(meetingTime.getTime())) return null
 
@@ -133,11 +133,18 @@ export default function HomeMeetingsSection({ meetings }: { meetings: MeetingRow
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: '#eae8e7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 13, color: '#3d0009', flexShrink: 0 }}>
-                        {initials(name)}
+                        {initials(m.title)}
                       </div>
-                      <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 600, color: '#1b1c1c', margin: 0 }}>
-                        {name}
-                      </h3>
+                      <div>
+                        <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 600, color: '#1b1c1c', margin: 0 }}>
+                          {m.title}
+                        </h3>
+                        {clientName && (
+                          <p style={{ fontSize: 12, fontFamily: 'var(--font-body)', color: '#9c9490', margin: 0 }}>
+                            {clientName}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <span style={{ backgroundColor: 'rgba(171,101,92,0.1)', color: '#8d4c44', padding: '4px 12px', borderRadius: 999, fontSize: 12, fontFamily: 'var(--font-body)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', border: '1px solid rgba(222,191,191,0.3)', whiteSpace: 'nowrap' }}>
                       {format(meetingTime, 'h:mm a')}
