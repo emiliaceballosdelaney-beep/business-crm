@@ -144,11 +144,14 @@ export async function deleteCalendarEvent(
   calendarId: string,
   googleEventId: string,
 ): Promise<void> {
-  // 404/410 = already deleted — treat as success
-  await fetch(
+  const res = await fetch(
     `${GOOGLE_CAL_BASE}/calendars/${encodeURIComponent(calendarId)}/events/${googleEventId}`,
     { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } },
   )
+  // 204 = deleted, 404/410 = already gone — both are fine
+  if (!res.ok && res.status !== 404 && res.status !== 410) {
+    throw new Error(`Failed to delete calendar event: ${res.status}`)
+  }
 }
 
 // ─── Gmail re-exports (implementation in lib/gmail.ts) ───────

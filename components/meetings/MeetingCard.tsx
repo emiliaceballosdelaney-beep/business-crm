@@ -56,11 +56,14 @@ export default function MeetingCard({ meeting, past = false, onSelect }: Props) 
 
   const handleDelete = async () => {
     if (meeting.google_event_id) {
-      fetch('/api/calendar/event', {
+      await fetch('/api/calendar/event', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ googleEventId: meeting.google_event_id }),
-      }).catch(() => {})
+        body: JSON.stringify({
+          googleEventId: meeting.google_event_id,
+          sourceCalendarName: meeting.source_calendar,
+        }),
+      }).catch(() => {}) // best-effort; CRM delete proceeds regardless
     }
     await supabase.from('meetings').delete().eq('id', meeting.id)
     setDeleteOpen(false)

@@ -1,23 +1,21 @@
 # Startup-Dashboard — STATUS.md
 
 ## Handoff
-_Last updated: 2026-05-30 — CRM Session 25_
+_Last updated: 2026-05-30 — CRM Session 26_
 
-**Status:** Fully deployed and working. All Session 25 changes live in production at crm.prosperwithem.com.
+**Status:** Locally verified and TypeScript clean. NOT yet deployed — Session 26 changes are uncommitted and undeployed.
 **Just completed:**
-- Fixed home page task checkboxes — were visual-only; now optimistically toggle status and write to DB (`components/home/HomeTasksSection.tsx`)
-- Added multi-calendar Google Calendar sync — replaced hardcoded `'primary'` with CalendarList API; now auto-discovers all visible calendars (including shared ones) and syncs from all of them with graceful per-calendar failure handling
-- Added `source_calendar TEXT` column to `meetings` table (schema/phase16-source-calendar.sql, applied in Supabase)
-- Sync now stores calendar display name per meeting (`source_calendar` field upserted on every sync)
-- Emilia shared personal Gmail calendar (`emilia.delaney@gmail.com`) with workspace account (`emilia@prosperwithem.com`) so both calendars sync
-- Emilia renamed calendars: personal = "Emilia Delaney", workspace = "Emilia Ceballos"
-- Calendar tag (`📅 Emilia Delaney` / `📅 Emilia Ceballos`) now shows on: list view cards, DayPanel cards in calendar view, Client Detail Meetings tab cards, and Meeting Detail modal
-- Fixed multiple TypeScript propagation errors for `source_calendar` across `home/types.ts`, `HomeMeetingsSection.tsx` (`toDetailRow`), `clients/types.ts` (`MeetingDetailRow`), all meetings DB queries
-- Added sync logging (`console.log` of calendars found + events per calendar) for future debugging
+- Fixed meeting delete — two separate bugs:
+  1. **Wrong calendar ID:** DELETE route was using `tokens.calendar_id` (workspace) for all deletions, but events synced from the personal "Emilia Delaney" calendar need a different calendar ID. Fixed by passing `sourceCalendarName` in the delete request and calling `listCalendars()` to resolve the correct calendar ID at delete time.
+  2. **Radix focus trap:** `ConfirmDelete` was rendered outside the Radix `<Dialog>` portal in `MeetingDetail.tsx`, so Radix's focus trap blocked all interaction with it. Fixed by moving `ConfirmDelete` inside `DialogContent`.
+  3. **Silent failures:** `deleteCalendarEvent` in `lib/google.ts` was not checking the HTTP response at all — now throws on non-204/404/410 responses.
+- Added daily calendar sync cron (`app/api/cron/sync-calendar/route.ts`) — runs at 8am daily via Vercel Cron, calls `/api/calendar/sync` internally, uses existing `CRON_SECRET` auth. Added entry to `vercel.json`.
+- Walked through all 5 email templates with Emilia — review was deferred, she redirected to CRM UI work.
 
-**Stopped at:** Clean stop. Everything deployed and working.
-**Next action:** Resume email template review — open `lib/email/templates/` and walk through all 5 templates with Emilia, then restore RESEND_API_KEY in Vercel env vars.
+**Stopped at:** Clean stop. Session 26 changes locally verified but NOT committed or deployed.
+**Next action:** Deploy Session 26 changes — run `/commit` then `vercel --prod` from `business-crm/` after Emilia confirms localhost looks good.
 **Open tasks:**
+- [ ] Commit + deploy Session 26 changes (meeting delete fix + calendar sync cron)
 - [ ] Email template review — Emilia to approve or edit 5 templates before restoring RESEND_API_KEY
 - [ ] Restore RESEND_API_KEY in Vercel env vars after template approval (no redeploy needed)
 - [ ] Confirm Resend domain still verified at resend.com → Domains
@@ -31,6 +29,8 @@ _Last updated: 2026-05-30 — CRM Session 25_
 - **Dev server MUST use `--webpack` flag** — Turbopack has a fatal panic loop on this project causing flickering/unclickable UI. Always: `npm run dev -- --port 3001 --webpack`.
 - **DEPLOY RULE:** Do NOT run `vercel --prod` until Emilia has tested on localhost and explicitly says to deploy.
 - **Dev port:** CRM runs on port 3001 — port 3000 is used by the client portal.
+- **Meeting delete architecture:** DELETE route (`app/api/calendar/event/route.ts`) accepts `{ googleEventId, sourceCalendarName }`. It calls `listCalendars()` to match `sourceCalendarName` (display name) to an actual Google Calendar ID, falling back to `tokens.calendar_id`. This handles multi-calendar events correctly. `ConfirmDelete` inside MeetingDetail MUST stay inside `<DialogContent>` — putting it outside causes Radix focus trap to block it.
+- **Daily calendar sync cron:** `app/api/cron/sync-calendar/route.ts` runs at 8am daily (vercel.json). Uses `CRON_SECRET` auth (already set in Vercel). When upgrading to Vercel Pro, update `schedule` in vercel.json to run more frequently (e.g. `*/15 * * * *` for every 15 min).
 - **Multi-calendar sync:** `lib/google.ts` → `listCalendars()` fetches all calendars via CalendarList API (filters out `freeBusyReader`). `app/api/calendar/sync/route.ts` uses `Promise.allSettled` per calendar so a single bad calendar doesn't crash the whole sync. `source_calendar` (display name) is written to the `meetings` table on every upsert.
 - **Calendar sharing:** Emilia's personal Gmail calendar (`emilia.delaney@gmail.com`) is shared with `emilia@prosperwithem.com` with "See all event details" access. If personal calendar events stop syncing, check that the share is still active in Google Calendar → Settings → Share with specific people.
 - **Calendar names:** personal = "Emilia Delaney", workspace = "Emilia Ceballos". These are display names stored in `source_calendar` column — if she renames them in Google, existing meetings will still show old names until re-synced.
@@ -436,3 +436,11 @@ Pairs displayed side-by-side in a full-width card above Financial Details.
 | 2026-05-30 | (CRM Session 25) Emilia shared personal Gmail calendar (`emilia.delaney@gmail.com`) with workspace account (`emilia@prosperwithem.com`); renamed calendars to "Emilia Delaney" (personal) and "Emilia Ceballos" (workspace). |
 | 2026-05-30 | (CRM Session 25) Diagnosed sync 401 issue — Emilia had disconnected Google before syncing; reconnected and confirmed sync working. |
 | 2026-05-30 | (CRM Session 25) All changes deployed to production — build clean (28+ pages, 0 errors). Live at https://crm.prosperwithem.com. |
+| 2026-05-30 | (CRM Session 26) Presented all 5 email automation templates for review — Emilia redirected to CRM UI work; template approval deferred. |
+| 2026-05-30 | (CRM Session 26) Fixed `deleteCalendarEvent` in `lib/google.ts` — now checks HTTP response and throws on non-204/404/410 status codes; previously silently ignored all errors. |
+| 2026-05-30 | (CRM Session 26) Fixed meeting delete wrong-calendar-ID bug — `app/api/calendar/event/route.ts` DELETE now accepts `sourceCalendarName`, calls `listCalendars()` to resolve correct calendar ID, falls back to `tokens.calendar_id`. Added `listCalendars` import. |
+| 2026-05-30 | (CRM Session 26) Fixed meeting delete in `components/meetings/MeetingDetail.tsx` — now passes `sourceCalendarName: meeting.source_calendar` in request body and properly awaits the fetch. |
+| 2026-05-30 | (CRM Session 26) Fixed meeting delete in `components/meetings/MeetingCard.tsx` — same sourceCalendarName + await fix as MeetingDetail. |
+| 2026-05-30 | (CRM Session 26) Fixed meeting delete unresponsive button — `ConfirmDelete` in `MeetingDetail.tsx` was rendered outside the Radix `<Dialog>` portal; Radix focus trap was blocking all interaction. Fixed by moving `ConfirmDelete` inside `<DialogContent>`. Emilia confirmed fix worked. |
+| 2026-05-30 | (CRM Session 26) Created `app/api/cron/sync-calendar/route.ts` — daily calendar sync cron handler with CRON_SECRET auth; internally calls POST /api/calendar/sync. |
+| 2026-05-30 | (CRM Session 26) Added `/api/cron/sync-calendar` to `vercel.json` at schedule `0 8 * * *` (8am daily). All Session 26 changes TypeScript clean. NOT committed or deployed. |

@@ -5,6 +5,7 @@ import {
   createCalendarEvent,
   updateCalendarEvent,
   deleteCalendarEvent,
+  listCalendars,
 } from '@/lib/google'
 import { supabase } from '@/lib/supabase'
 
@@ -64,7 +65,7 @@ export async function PUT(req: NextRequest) {
 }
 
 // DELETE /api/calendar/event — remove the linked Google Calendar event
-// Body: { googleEventId }
+// Body: { googleEventId, sourceCalendarName? }
 export async function DELETE(req: NextRequest) {
   const tokens = await getGoogleTokens()
   if (!tokens) return NextResponse.json({ ok: false, reason: 'not_connected' })
@@ -72,11 +73,20 @@ export async function DELETE(req: NextRequest) {
   const accessToken = await getValidAccessToken()
   if (!accessToken) return NextResponse.json({ ok: false, reason: 'token_invalid' })
 
-  const { googleEventId } = await req.json()
+  const { googleEventId, sourceCalendarName } = await req.json()
   if (!googleEventId) return NextResponse.json({ ok: true }) // nothing to delete
 
   try {
-    await deleteCalendarEvent(accessToken, tokens.calendar_id, googleEventId)
+    // Resolve the correct calendar ID from the display name stored on the meeting.
+    // With multi-calendar sync, events may come from a shared calendar (e.g. personal Gmail)
+    // whose ID differs from the workspace primary calendar in tokens.calendar_id.
+    let calendarId = tokens.calendar_id
+    if (sourceCalendarName) {
+      const calendars = await listCalendars(accessToken)
+      const match = calendars.find(c => c.summary === sourceCalendarName)
+      if (match) calendarId = match.id
+    }
+    await deleteCalendarEvent(accessToken, calendarId, googleEventId)
     return NextResponse.json({ ok: true })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
