@@ -114,6 +114,11 @@ function MeetingCard({ m, past = false, expandedId, setExpandedId, onEdit, onDel
                 {m.duration_minutes} min
               </span>
             )}
+            {m.source_calendar && (
+              <span style={{ fontSize: 10, color: '#9c9490', fontFamily: 'var(--font-body)' }}>
+                · 📅 {m.source_calendar}
+              </span>
+            )}
           </div>
           {m.title && (
             <p style={{ fontSize: 13, color: '#574141', fontFamily: 'var(--font-body)', margin: 0 }}>{m.title}</p>

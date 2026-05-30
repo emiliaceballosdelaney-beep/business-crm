@@ -29,7 +29,7 @@ async function getClientDetail(id: string) {
       .limit(20),
     supabase
       .from('meetings')
-      .select('id, title, date, duration_minutes, meeting_type, notes, meeting_url, google_event_id')
+      .select('id, title, date, duration_minutes, meeting_type, notes, meeting_url, google_event_id, source_calendar')
       .eq('client_id', id)
       .eq('startup_id', PROSPER_STARTUP_ID)
       .order('date', { ascending: false })

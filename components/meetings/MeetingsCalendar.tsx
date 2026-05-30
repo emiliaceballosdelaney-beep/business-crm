@@ -303,6 +303,9 @@ function DayPanel({ selectedDate, selectedMeetings, onSelect }: { selectedDate: 
                 {!isNaN(meetingDate.getTime()) ? format(meetingDate, 'h:mm a') : '—'}
                 {m.duration_minutes ? ` · ${m.duration_minutes} min` : ''}
               </div>
+              {m.source_calendar && (
+                <div className="text-[10px] text-gray-400 font-label">📅 {m.source_calendar}</div>
+              )}
               {m.meeting_url && (
                 <button
                   onClick={e => { e.stopPropagation(); window.open(m.meeting_url!, '_blank') }}

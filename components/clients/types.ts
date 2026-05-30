@@ -63,6 +63,7 @@ export type MeetingDetailRow = {
   notes: string | null
   meeting_url: string | null
   google_event_id: string | null
+  source_calendar: string | null
 }
 
 export type TaskDetailRow = {
