@@ -203,5 +203,51 @@ export async function POST() {
   const imported = results.filter(r => r.status === 'fulfilled').length
   const calendarsFailed = calendarResults.filter(r => r.status === 'rejected').length
 
+  // Post-sync reclassify: fix any meetings outside the sync window that were
+  // previously misclassified. Applies override patterns directly to all DB rows.
+  const PERSONAL_OR = [
+    'title.ilike.%stay at%',
+    'title.ilike.%staying at%',
+    'title.ilike.%check-in%',
+    'title.ilike.%check-out%',
+    'title.ilike.%road trip%',
+    'title.ilike.%flight to%',
+    'title.ilike.%flying to%',
+    'title.ilike.%drive to%',
+    'title.ilike.%airbnb%',
+    'title.ilike.%vrbo%',
+    'title.ilike.%hotel%',
+  ].join(',')
+
+  const HOLIDAY_OR = [
+    'title.ilike.%flag day%',
+    'title.ilike.%new year%',
+    'title.ilike.%valentine%',
+    'title.ilike.%st. patrick%',
+    'title.ilike.%easter%',
+    'title.ilike.%memorial day%',
+    'title.ilike.%mother%day%',
+    'title.ilike.%father%day%',
+    'title.ilike.%juneteenth%',
+    'title.ilike.%independence day%',
+    'title.ilike.%fourth of july%',
+    'title.ilike.%4th of july%',
+    'title.ilike.%labor day%',
+    'title.ilike.%halloween%',
+    'title.ilike.%veterans day%',
+    'title.ilike.%thanksgiving%',
+    'title.ilike.%christmas%',
+    'title.ilike.%hanukkah%',
+    'title.ilike.%kwanzaa%',
+    'title.ilike.%martin luther king%',
+    'title.ilike.%mlk day%',
+    'title.ilike.%presidents day%',
+  ].join(',')
+
+  await Promise.all([
+    supabase.from('meetings').update({ meeting_type: 'personal', client_id: null }).eq('startup_id', PROSPER_STARTUP_ID).or(PERSONAL_OR),
+    supabase.from('meetings').update({ meeting_type: 'holiday', client_id: null }).eq('startup_id', PROSPER_STARTUP_ID).or(HOLIDAY_OR),
+  ])
+
   return NextResponse.json({ ok: true, imported, calendarsScanned: calendarResults.length, calendarsFailed })
 }
