@@ -56,6 +56,44 @@ function cleanNotes(description: string | undefined, meetingUrl: string | null):
   return result || null
 }
 
+// Infer meeting type from title keywords + calendar name.
+// Client match takes priority — if a client is attending, it's a client-facing meeting.
+function inferMeetingType(
+  title: string,
+  calendarName: string,
+  hasClientMatch: boolean,
+): 'session' | 'discovery' | 'internal' | 'personal' {
+  const t = title.toLowerCase()
+
+  if (hasClientMatch) {
+    return /discovery|intro|consult/.test(t) ? 'discovery' : 'session'
+  }
+
+  if (/discovery|intro call|consult/.test(t)) return 'discovery'
+  if (/team|all.?hands|stand.?up|sprint|planning|retrospective/.test(t)) return 'internal'
+  if (/dentist|doctor|gym|workout|haircut|birthday|vacation|appointment|personal/.test(t)) return 'personal'
+
+  // Calendar name as fallback signal — "Personal" calendar = personal event
+  if (calendarName === 'Personal') return 'personal'
+
+  // Default for Business/workspace events with no other signal
+  return 'internal'
+}
+
+// Match an event's attendees against client emails. Skips self (Emilia's own entry).
+function matchClientId(
+  attendees: GCalEvent['attendees'],
+  clientsByEmail: Map<string, string>,
+): string | null {
+  if (!attendees) return null
+  for (const a of attendees) {
+    if (a.self) continue
+    const id = clientsByEmail.get(a.email.toLowerCase())
+    if (id) return id
+  }
+  return null
+}
+
 // POST /api/calendar/sync — pull Google Calendar events into meetings table
 export async function POST() {
   const tokens = await getGoogleTokens()
@@ -68,9 +106,34 @@ export async function POST() {
   const timeMin = new Date(now.getTime() - 7  * 24 * 60 * 60 * 1000).toISOString()
   const timeMax = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000).toISOString()
 
-  // Discover all calendars the connected account can read (incl. shared ones)
-  const calendars = await listCalendars(accessToken)
+  // Fetch calendars + clients in parallel
+  const [calendars, { data: clientRows }] = await Promise.all([
+    listCalendars(accessToken),
+    supabase
+      .from('clients')
+      .select('id, email')
+      .eq('startup_id', PROSPER_STARTUP_ID)
+      .not('email', 'is', null),
+  ])
+
   console.log('[sync] calendars found:', calendars.map(c => `${c.summary} (${c.id}) role=${c.accessRole}`))
+
+  // Build email → client_id lookup (case-insensitive)
+  const clientsByEmail = new Map<string, string>(
+    (clientRows ?? []).filter(c => c.email).map(c => [c.email!.toLowerCase(), c.id])
+  )
+
+  // Fetch existing manually-set client_id values so we don't overwrite manual links
+  const { data: existingRows } = await supabase
+    .from('meetings')
+    .select('google_event_id, client_id')
+    .eq('startup_id', PROSPER_STARTUP_ID)
+    .not('google_event_id', 'is', null)
+    .not('client_id', 'is', null)
+
+  const manualClientIds = new Map<string, string>(
+    (existingRows ?? []).map(r => [r.google_event_id, r.client_id])
+  )
 
   const calendarResults = await Promise.allSettled(
     calendars.map(async cal => {
@@ -79,10 +142,11 @@ export async function POST() {
       return evs.map(e => ({ event: e, calendarName: cal.summary }))
     })
   )
-  // Only use calendars that fetched successfully; skip any that errored
+
   calendarResults.forEach((r, i) => {
     if (r.status === 'rejected') console.error(`[sync] calendar "${calendars[i]?.summary}" failed:`, r.reason)
   })
+
   const allCalendarEvents = calendarResults
     .filter((r): r is PromiseFulfilledResult<{ event: GCalEvent; calendarName: string }[]> => r.status === 'fulfilled')
     .map(r => r.value)
@@ -104,6 +168,11 @@ export async function POST() {
         ? Math.round((new Date(endDt).getTime() - new Date(startDt).getTime()) / 60_000)
         : null
       const meetingUrl = extractMeetingUrl(event)
+
+      // Prefer manually-set client link; fall back to attendee email match
+      const client_id = manualClientIds.get(event.id) ?? matchClientId(event.attendees, clientsByEmail)
+      const meeting_type = inferMeetingType(event.summary ?? '', calendarName, client_id !== null)
+
       return supabase.from('meetings').upsert(
         {
           startup_id:       PROSPER_STARTUP_ID,
@@ -114,7 +183,8 @@ export async function POST() {
           meeting_url:      meetingUrl,
           notes:            cleanNotes(event.description, meetingUrl),
           status:           'scheduled',
-          meeting_type:     'session',
+          meeting_type,
+          client_id,
           source_calendar:  calendarName,
         },
         { onConflict: 'google_event_id' },

@@ -195,6 +195,7 @@ export type GCalEvent = {
   start: { dateTime?: string; date?: string }
   end?:  { dateTime?: string; date?: string }
   status?: string
+  attendees?: Array<{ email: string; displayName?: string; self?: boolean; responseStatus?: string }>
 }
 
 export type GCalendarListEntry = {
