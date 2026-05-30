@@ -1,23 +1,25 @@
 # Startup-Dashboard — STATUS.md
 
 ## Handoff
-_Last updated: 2026-05-30 — CRM Session 26_
+_Last updated: 2026-05-30 — CRM Session 27_
 
-**Status:** Locally verified and TypeScript clean. NOT yet deployed — Session 26 changes are uncommitted and undeployed.
+**Status:** All Session 27 changes deployed to production. Clean stop.
 **Just completed:**
-- Fixed meeting delete — two separate bugs:
-  1. **Wrong calendar ID:** DELETE route was using `tokens.calendar_id` (workspace) for all deletions, but events synced from the personal "Emilia Delaney" calendar need a different calendar ID. Fixed by passing `sourceCalendarName` in the delete request and calling `listCalendars()` to resolve the correct calendar ID at delete time.
-  2. **Radix focus trap:** `ConfirmDelete` was rendered outside the Radix `<Dialog>` portal in `MeetingDetail.tsx`, so Radix's focus trap blocked all interaction with it. Fixed by moving `ConfirmDelete` inside `DialogContent`.
-  3. **Silent failures:** `deleteCalendarEvent` in `lib/google.ts` was not checking the HTTP response at all — now throws on non-204/404/410 responses.
-- Added daily calendar sync cron (`app/api/cron/sync-calendar/route.ts`) — runs at 8am daily via Vercel Cron, calls `/api/calendar/sync` internally, uses existing `CRON_SECRET` auth. Added entry to `vercel.json`.
-- Walked through all 5 email templates with Emilia — review was deferred, she redirected to CRM UI work.
+- Committed + deployed Session 26 changes (meeting delete fix, daily sync cron)
+- Rewrote calendar sync route — meeting type now inferred from title keywords + calendar name, client linked from attendee email match
+- Added `Holiday` meeting type (gold, HL abbrev) with comprehensive US holiday keyword list
+- Added travel/accommodation keywords (`ALWAYS_PERSONAL_RE`) that route to Personal before client match — prevents vacation events from being tagged as Client Session
+- Added post-sync DB reclassify pass — fixes events outside the 7-day sync window via direct Supabase update; only touches `session`/`internal` types so manual edits survive
+- Fixed meeting_type + client_id preservation — existing events now keep their stored values through resyncs; inference only runs for brand new events
+- Fixed meeting title display — Google Calendar event title is always the primary label; linked client name shows as a small muted secondary line below it
+- Emilia renamed Google calendars: "Emilia Delaney" → **"Personal"**, "Emilia Ceballos" → **"Business"**
+- Email template review deferred again — Emilia redirected to CRM functionality work both times
 
-**Stopped at:** Clean stop. Session 26 changes locally verified but NOT committed or deployed.
-**Next action:** Deploy Session 26 changes — run `/commit` then `vercel --prod` from `business-crm/` after Emilia confirms localhost looks good.
+**Stopped at:** Clean stop. All deployed to production (crm.prosperwithem.com). Last sync: 32 meetings, 0 failures.
+**Next action:** Email template review — open `lib/email/templates/` and walk through all 5 with Emilia, then restore RESEND_API_KEY. To restore the key: get it from resend.com → API Keys, then update it in Vercel dashboard → Settings → Environment Variables (no redeploy needed).
 **Open tasks:**
-- [ ] Commit + deploy Session 26 changes (meeting delete fix + calendar sync cron)
-- [ ] Email template review — Emilia to approve or edit 5 templates before restoring RESEND_API_KEY
-- [ ] Restore RESEND_API_KEY in Vercel env vars after template approval (no redeploy needed)
+- [ ] Email template review — Emilia to approve or edit 5 templates (discovery-invite, intake-followup, post-discovery-thanks, post-discovery-checkin, idle-nudge)
+- [ ] Restore RESEND_API_KEY in Vercel env vars after template approval — key must be retrieved from resend.com (not in local env; was overwritten with "disabled")
 - [ ] Confirm Resend domain still verified at resend.com → Domains
 **Open questions:**
 - Template 3 (post-discovery-thanks): does "I'm already thinking about how I can support you on this journey" feel right for someone who hasn't signed on yet?
@@ -29,11 +31,14 @@ _Last updated: 2026-05-30 — CRM Session 26_
 - **Dev server MUST use `--webpack` flag** — Turbopack has a fatal panic loop on this project causing flickering/unclickable UI. Always: `npm run dev -- --port 3001 --webpack`.
 - **DEPLOY RULE:** Do NOT run `vercel --prod` until Emilia has tested on localhost and explicitly says to deploy.
 - **Dev port:** CRM runs on port 3001 — port 3000 is used by the client portal.
-- **Meeting delete architecture:** DELETE route (`app/api/calendar/event/route.ts`) accepts `{ googleEventId, sourceCalendarName }`. It calls `listCalendars()` to match `sourceCalendarName` (display name) to an actual Google Calendar ID, falling back to `tokens.calendar_id`. This handles multi-calendar events correctly. `ConfirmDelete` inside MeetingDetail MUST stay inside `<DialogContent>` — putting it outside causes Radix focus trap to block it.
+- **Calendar names (updated Session 27):** personal = **"Personal"**, workspace = **"Business"**. Emilia renamed them in Google Calendar settings 2026-05-30. Inference logic in sync route uses these exact strings — if she renames again, update `ALWAYS_PERSONAL_RE` fallback in `app/api/calendar/sync/route.ts`.
+- **Meeting type inference:** New events infer type from `inferMeetingType(title, calendarName, hasClientMatch)`. Order: HOLIDAY_RE → ALWAYS_PERSONAL_RE → client match (→ session/discovery) → keyword → calendar name fallback → 'internal'. Existing events preserve their stored `meeting_type` — inference does NOT re-run on subsequent syncs.
+- **Post-sync reclassify pass:** runs after every sync in `app/api/calendar/sync/route.ts`. Applies PERSONAL_OR and HOLIDAY_OR ilike patterns directly to the DB. Only fires on meetings with `meeting_type IN ('session', 'internal')` — manual edits to personal/holiday/discovery types are safe.
+- **Holiday meeting type:** `meeting_type = 'holiday'`, abbrev `HL`, gold color `#d4a843`. Added to MEETING_TYPE_CONFIG + MeetingForm dropdown. Keyword list in `HOLIDAY_RE` constant in sync route.
+- **Meeting title display:** `meeting.title` (Google Calendar event name) is always the primary bold label. Linked client name shows as a small muted line below — never replaces the title. This is the pattern in MeetingCard.tsx, MeetingsCalendar.tsx (day panel), HomeMeetingsSection.tsx.
+- **Meeting delete architecture:** DELETE route (`app/api/calendar/event/route.ts`) accepts `{ googleEventId, sourceCalendarName }`. It calls `listCalendars()` to match `sourceCalendarName` (display name) to an actual Google Calendar ID, falling back to `tokens.calendar_id`. `ConfirmDelete` inside MeetingDetail MUST stay inside `<DialogContent>` — putting it outside causes Radix focus trap to block it.
 - **Daily calendar sync cron:** `app/api/cron/sync-calendar/route.ts` runs at 8am daily (vercel.json). Uses `CRON_SECRET` auth (already set in Vercel). When upgrading to Vercel Pro, update `schedule` in vercel.json to run more frequently (e.g. `*/15 * * * *` for every 15 min).
-- **Multi-calendar sync:** `lib/google.ts` → `listCalendars()` fetches all calendars via CalendarList API (filters out `freeBusyReader`). `app/api/calendar/sync/route.ts` uses `Promise.allSettled` per calendar so a single bad calendar doesn't crash the whole sync. `source_calendar` (display name) is written to the `meetings` table on every upsert.
 - **Calendar sharing:** Emilia's personal Gmail calendar (`emilia.delaney@gmail.com`) is shared with `emilia@prosperwithem.com` with "See all event details" access. If personal calendar events stop syncing, check that the share is still active in Google Calendar → Settings → Share with specific people.
-- **Calendar names:** personal = "Emilia Delaney", workspace = "Emilia Ceballos". These are display names stored in `source_calendar` column — if she renames them in Google, existing meetings will still show old names until re-synced.
 - **`source_calendar` column:** Added in `schema/phase16-source-calendar.sql`. Present in `MeetingRow` (MeetingCard.tsx), `MeetingDetailRow` (clients/types.ts), and `home/types.ts MeetingRow`. All meetings queries include it in SELECT. Displayed on list cards, DayPanel cards, MeetingsTab cards, and detail modal. Calendar grid pills (month/week cells) are too small — no tag there by design.
 - **Gmail Send As aliases:** hello@, sales@, support@ are configured in Gmail Settings → Accounts → "Send mail as". NOT auto-populated from Google Workspace — added manually.
 - **MilestoneTaskRow due_date:** always use `.slice(0, 10) + 'T12:00:00'` when parsing task due dates from DB — column may contain full ISO timestamps. T12:00:00 (noon) prevents UTC off-by-one in Pacific time.
@@ -47,7 +52,7 @@ _Last updated: 2026-05-30 — CRM Session 26_
 - **`email_labels` table** in Supabase — CRM tags keyed by Gmail `message_id` (TEXT PRIMARY KEY, labels TEXT[]). Not synced back to Gmail.
 - **InboxMessageRow uses `<div role="button">`**, not `<button>`, to avoid nested-button HTML error.
 - **Folder queries:** inbox=`in:inbox`, starred=`is:starred`, archived=`-in:inbox -in:trash -in:spam`, all=`in:all`, trash=`in:trash`, drafts = Gmail Drafts API.
-- **RESEND_API_KEY is `disabled` in Vercel** — automations paused. Restore after template approval (no redeploy needed).
+- **RESEND_API_KEY is `disabled` in Vercel** — automations paused. Real key must be retrieved from resend.com (was overwritten; not in local env). Restore after template approval (no redeploy needed).
 - **Google Workspace:** primary `emilia@prosperwithem.com`. Aliases: hello@, sales@, support@. GoDaddy DNS has Google MX + Resend TXT records.
 - **Google Cloud project** stays in personal account (`emilia.ceballos.delaney@gmail.com`) — `emilia@prosperwithem.com` is OAuth test user.
 - **prosperwithem.com DNS is on GoDaddy** (domaincontrol.com nameservers).
@@ -444,3 +449,14 @@ Pairs displayed side-by-side in a full-width card above Financial Details.
 | 2026-05-30 | (CRM Session 26) Fixed meeting delete unresponsive button — `ConfirmDelete` in `MeetingDetail.tsx` was rendered outside the Radix `<Dialog>` portal; Radix focus trap was blocking all interaction. Fixed by moving `ConfirmDelete` inside `<DialogContent>`. Emilia confirmed fix worked. |
 | 2026-05-30 | (CRM Session 26) Created `app/api/cron/sync-calendar/route.ts` — daily calendar sync cron handler with CRON_SECRET auth; internally calls POST /api/calendar/sync. |
 | 2026-05-30 | (CRM Session 26) Added `/api/cron/sync-calendar` to `vercel.json` at schedule `0 8 * * *` (8am daily). All Session 26 changes TypeScript clean. NOT committed or deployed. |
+| 2026-05-30 | (CRM Session 27) Committed + deployed Session 26 changes (commit c9491dd) — meeting delete fix, daily sync cron. Build clean in 34s. |
+| 2026-05-30 | (CRM Session 27) Added `attendees` field to `GCalEvent` type in `lib/google.ts` — Google already returns this data; type just wasn't capturing it. |
+| 2026-05-30 | (CRM Session 27) Rewrote `app/api/calendar/sync/route.ts` — added `inferMeetingType()` (keyword + calendar name + client match logic), `matchClientId()` (attendee email → client_id), client email lookup from Supabase. Meeting type and client now inferred on every new sync event. |
+| 2026-05-30 | (CRM Session 27) Emilia renamed Google calendars: "Emilia Delaney" → "Personal", "Emilia Ceballos" → "Business". Inference logic uses these display names as fallback signal. |
+| 2026-05-30 | (CRM Session 27) Fixed meeting title display in `MeetingCard.tsx`, `MeetingsCalendar.tsx`, `HomeMeetingsSection.tsx` — Google Calendar event title is always the primary bold label; linked client name is a small muted secondary line below. Previously the client name replaced the title entirely when a client was linked. |
+| 2026-05-30 | (CRM Session 27) Added `holiday` meeting type to `MEETING_TYPE_CONFIG` in `lib/constants.ts` — gold color (#d4a843), abbrev "HL". Added `HOLIDAY_RE` keyword regex to sync route. Added "Holiday" option to `MeetingForm` dropdown. |
+| 2026-05-30 | (CRM Session 27) Added `ALWAYS_PERSONAL_RE` to sync route — travel/accommodation keywords ("stay at", "staying at", "road trip", "airbnb", etc.) always route to Personal before client match check runs, preventing vacation events from being tagged as Client Session. |
+| 2026-05-30 | (CRM Session 27) Added post-sync DB reclassify pass to sync route — after Google Calendar import, runs direct Supabase `.or()` ilike updates to fix events outside the 7-day sync window. Only updates meetings with `meeting_type IN ('session', 'internal')` so manual edits survive. |
+| 2026-05-30 | (CRM Session 27) Fixed meeting_type + client_id preservation through resyncs — sync route now fetches all existing meetings by google_event_id; existing events keep their stored values; inference only runs for brand new events. Deployed commit 0d9f6a2. |
+| 2026-05-30 | (CRM Session 27) Triggered 4 manual syncs throughout session — all returned 32 events, 3 calendars, 0 failures. |
+| 2026-05-30 | (CRM Session 27) Email template review deferred again — Emilia redirected to CRM functionality work. RESEND_API_KEY still set to "disabled"; real key must be retrieved from resend.com. |
