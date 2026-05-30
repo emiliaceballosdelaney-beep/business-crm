@@ -131,16 +131,15 @@ export async function POST() {
     (clientRows ?? []).filter(c => c.email).map(c => [c.email!.toLowerCase(), c.id])
   )
 
-  // Fetch existing manually-set client_id values so we don't overwrite manual links
+  // Fetch existing meetings to preserve manually-set meeting_type and client_id
   const { data: existingRows } = await supabase
     .from('meetings')
-    .select('google_event_id, client_id')
+    .select('google_event_id, meeting_type, client_id')
     .eq('startup_id', PROSPER_STARTUP_ID)
     .not('google_event_id', 'is', null)
-    .not('client_id', 'is', null)
 
-  const manualClientIds = new Map<string, string>(
-    (existingRows ?? []).map(r => [r.google_event_id, r.client_id])
+  const existingByEventId = new Map<string, { meeting_type: string | null; client_id: string | null }>(
+    (existingRows ?? []).map(r => [r.google_event_id, { meeting_type: r.meeting_type, client_id: r.client_id }])
   )
 
   const calendarResults = await Promise.allSettled(
@@ -177,9 +176,10 @@ export async function POST() {
         : null
       const meetingUrl = extractMeetingUrl(event)
 
-      // Prefer manually-set client link; fall back to attendee email match
-      const client_id = manualClientIds.get(event.id) ?? matchClientId(event.attendees, clientsByEmail)
-      const meeting_type = inferMeetingType(event.summary ?? '', calendarName, client_id !== null)
+      const existing = existingByEventId.get(event.id)
+      // Preserve stored values for existing events; infer only for new ones
+      const client_id = existing?.client_id ?? matchClientId(event.attendees, clientsByEmail)
+      const meeting_type = existing?.meeting_type ?? inferMeetingType(event.summary ?? '', calendarName, client_id !== null)
 
       return supabase.from('meetings').upsert(
         {
@@ -244,9 +244,10 @@ export async function POST() {
     'title.ilike.%presidents day%',
   ].join(',')
 
+  // Only reclassify events still at the two default/auto values — never overwrite manual edits
   await Promise.all([
-    supabase.from('meetings').update({ meeting_type: 'personal', client_id: null }).eq('startup_id', PROSPER_STARTUP_ID).or(PERSONAL_OR),
-    supabase.from('meetings').update({ meeting_type: 'holiday', client_id: null }).eq('startup_id', PROSPER_STARTUP_ID).or(HOLIDAY_OR),
+    supabase.from('meetings').update({ meeting_type: 'personal', client_id: null }).eq('startup_id', PROSPER_STARTUP_ID).in('meeting_type', ['session', 'internal']).or(PERSONAL_OR),
+    supabase.from('meetings').update({ meeting_type: 'holiday', client_id: null }).eq('startup_id', PROSPER_STARTUP_ID).in('meeting_type', ['session', 'internal']).or(HOLIDAY_OR),
   ])
 
   return NextResponse.json({ ok: true, imported, calendarsScanned: calendarResults.length, calendarsFailed })
