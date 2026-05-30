@@ -43,6 +43,7 @@ const MEETING_TYPES = [
   { value: 'session',   label: 'Client Session' },
   { value: 'internal',  label: 'Business Meeting' },
   { value: 'personal',  label: 'Personal' },
+  { value: 'holiday',   label: 'Holiday' },
 ]
 
 export default function MeetingForm({ isOpen, onClose, prefillClientId, prefillDate, initialData }: Props) {

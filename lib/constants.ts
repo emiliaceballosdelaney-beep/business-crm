@@ -153,6 +153,7 @@ export const MEETING_TYPE_CONFIG: Record<string, MeetingTypeConfig> = {
   discovery: { abbrev: 'DC', label: 'Client Discovery Call', avatarBg: '#AB655C', avatarColor: '#F7F1ED', badgeBg: 'rgba(171,101,92,0.12)', badgeColor: '#8d4c44' },
   internal:  { abbrev: 'BM', label: 'Business Meeting',      avatarBg: '#3d0009', avatarColor: '#debfbf', badgeBg: 'rgba(61,0,9,0.08)',      badgeColor: '#3d0009' },
   personal:  { abbrev: 'PS', label: 'Personal',              avatarBg: '#fecdd3', avatarColor: '#640015', badgeBg: 'rgba(254,205,211,0.5)', badgeColor: '#8d4c44' },
+  holiday:   { abbrev: 'HL', label: 'Holiday',               avatarBg: '#d4a843', avatarColor: '#ffffff', badgeBg: 'rgba(212,168,67,0.15)', badgeColor: '#8a6a1a' },
 }
 
 const DEFAULT_MEETING_TYPE: MeetingTypeConfig = {
