@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 
-const LOGO_ABSOLUTE = 'https://startup-dashboard-five.vercel.app/prosper_with_em_logo_transparent.png'
+const LOGO_ABSOLUTE = 'https://crm.prosperwithem.com/prosper_with_em_logo_transparent.png'
 export const DEFAULT_SIG_TEXT = 'Emilia Ceballos\nprosperwithem.com'
 
 export function buildSignatureHtml(text: string): string {
