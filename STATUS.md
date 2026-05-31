@@ -1,50 +1,47 @@
 # Startup-Dashboard — STATUS.md
 
 ## Handoff
-_Last updated: 2026-05-30 — CRM Session 29_
+_Last updated: 2026-05-31 — CRM Session 30_
 
-**Status:** Locally verified but NOT committed or deployed. Session 28 + Session 29 changes are uncommitted. `lib/useSignature.ts` has a TEST123 diagnostic marker (line 18) that MUST be removed before any commit or deploy. Email signature mobile alignment is unresolved and still under investigation.
+**Status:** Fully deployed to production (commits 912da63, 8ba5c0a). Email automations are live — RESEND_API_KEY restored, Resend domain verified. Clean stop.
 
 **Just completed:**
-- Discovered `HTML_SIGNATURE` in `lib/gmail.ts` is dead code — every UI send path passes `signatureHtml` from `useSignature.ts`; the constant is never reached. All Session 28 alignment work was on the wrong file.
-- Fixed `ComposeModal.tsx`: `canSend` now requires `!!from.trim()` — Send button stays disabled until SendAsDropdown loads, preventing empty-From sends
-- Fixed `app/api/gmail/compose/route.ts`: server-side fallback fetches default sendAs when `from` is empty; improved error logging
-- Diagnosed "Invalid To header" Gmail error — it was a misleading error for an expired OAuth token, NOT a MIME problem. Reconnecting Google fixed sending.
-- Attempted 6+ alignment approaches on `buildSignatureHtml` (the real sent signature): margin-left on img (CSS stripped), table with padding-left:12px on td (CSS stripped), spacer td with HTML width=16 (stripped), display:inline / no display property (no effect). All had zero visible change on Gmail mobile.
-- Added TEST123 diagnostic marker to `useSignature.ts` to verify if hot reload is reaching the browser — session ended before result confirmed.
+- Confirmed TEST123 diagnostic — appeared in mobile email, proving HMR was working in Session 29 and all alignment attempts correctly reached Gmail
+- Fixed signature regression: Session 29 had changed img to `vertical-align:bottom` (no display:block, no `<br>`), causing "Emilia Ceballos" to render inline to the right of the logo
+- Fixed signature alignment: removed `display:block`, added `<br>` after img — img now inline in Gmail's text flow, perfectly left-aligned with name/URL (`lib/useSignature.ts`)
+- Removed TEST123 diagnostic marker from `lib/useSignature.ts`
+- Updated `LOGO_ABSOLUTE` from `startup-dashboard-five.vercel.app` → `crm.prosperwithem.com` (`lib/useSignature.ts`)
+- Committed + deployed Sessions 28+29 changes (commit 912da63, 9 files)
+- Committed + deployed logo URL fix (commit 8ba5c0a)
+- Confirmed Resend domain (`prosperwithem.com`) still verified in Resend dashboard
+- Restored `RESEND_API_KEY` in Vercel production — email automations now live
 
-**Stopped at:** Mid-investigation. TEST123 marker is live in `lib/useSignature.ts`. Did not confirm whether it appeared in the test email (session ended first).
+**Stopped at:** Clean stop. Email template review deferred to next session.
 
-**Next action:** Hard refresh (Cmd+Shift+R), send a test email, check if "TEST123" appears on mobile. If YES → code is updating but Gmail mobile strips everything; decide: text-only sig or accept offset. If NO → stale browser cache; kill/restart dev server, hard refresh, retry.
+**Next action:** Email template review — read all 5 templates in `lib/email/templates/`, approve or suggest edits. Focus: (1) `post-discovery-thanks` line "I'm already thinking about how I can support you on this journey" — right before someone signs on? (2) `idle-nudge` pain point list (debt, investing, stress) — matches audience?
 
 **Open tasks:**
-- [ ] Confirm TEST123 result, then remove marker from `lib/useSignature.ts` line 18 before any commit
-- [ ] Resolve email signature logo alignment on mobile Gmail — or decide to accept it / go text-only
-- [ ] Fix `buildSignatureHtml` to use base64 PNG instead of external Vercel URL (Session 28's base64 fix was to dead code — "Display images below" is still broken for actual sends)
-- [ ] Deploy Session 28 + 29 changes to production once alignment resolved and TEST123 removed
-- [ ] Email template review — approve or edit 5 templates (discovery-invite, intake-followup, post-discovery-thanks, post-discovery-checkin, idle-nudge)
-- [ ] Restore RESEND_API_KEY in Vercel after template approval — retrieve from resend.com
-- [ ] Confirm Resend domain still verified at resend.com → Domains
+- [ ] Email template review — 5 templates: discovery-invite, intake-followup, post-discovery-thanks, post-discovery-checkin, idle-nudge
+- [ ] AI Automation startup row + toggle UI (roadmap item — separate build, not urgent)
 
 **Open questions:**
-- Did TEST123 appear in the latest test email? (unconfirmed — session ended)
-- Is there any reliable way to align a logo image with text in Gmail mobile? All CSS and HTML attribute approaches have been stripped.
-- Should we go text-only signature if alignment can't be fixed?
 - Template 3 (post-discovery-thanks): does "I'm already thinking about how I can support you on this journey" feel right for someone who hasn't signed on yet?
-- Template 5 (idle-nudge): does the pain point list (debt, investing, stress) match the audience?
-- Emilia mentioned wanting a future skill for auto-tagging emails — no action yet
+- Template 5 (idle-nudge): does the pain point list (debt, investing, stress) match Emilia's audience?
+- Auto-tagging emails: Emilia mentioned wanting a future skill for this — no action yet
 
 **Critical context:**
 - **CRM CODE IS IN `business-crm/`** — NOT in the top-level `Startup-Dashboard/` folder. Run all dev commands from `business-crm/`: `npm run dev -- --port 3001 --webpack` / `vercel --prod`.
 - **Dev server MUST use `--webpack` flag** — Turbopack causes fatal panic loop. Always: `npm run dev -- --port 3001 --webpack`.
 - **DEPLOY RULE:** Do NOT run `vercel --prod` until Emilia has tested on localhost and explicitly says to deploy.
 - **Dev port:** CRM runs on port 3001 — port 3000 is used by the client portal.
-- **`HTML_SIGNATURE` in `lib/gmail.ts` is DEAD CODE.** `buildMimeRaw` uses `opts.signatureHtml !== undefined ? opts.signatureHtml : HTML_SIGNATURE`, and every send path (ComposeModal, InboxReadingPane reply, drafts) passes `signatureHtml` from `useSignature.ts`. Do NOT edit `HTML_SIGNATURE` to fix alignment or base64 — edit `buildSignatureHtml` in `lib/useSignature.ts` instead.
-- **`lib/useSignature.ts` is the real signature.** `buildSignatureHtml()` builds what actually gets sent. Currently uses `LOGO_ABSOLUTE` (external Vercel URL, NOT base64). Has TEST123 diagnostic marker at line 18 — remove before any commit or deploy.
-- **Gmail mobile strips all tested CSS/HTML spacing:** `margin-left` on img (CSS), `padding-left` on td (CSS), `width` attribute on spacer td (HTML attr), no-display-property on img — all have zero visible effect. Root cause: Gmail mobile places block images at the container edge, outside text flow.
-- **"Invalid To header" from Gmail API = expired OAuth token.** Misleading error. If you see it, reconnect Google on the Meetings page first before debugging MIME.
-- **`canSend` fix (Session 29):** `ComposeModal.tsx` now requires `!!from.trim()` — prevents sending before SendAsDropdown loads.
-- **Compose route from-fallback (Session 29):** `app/api/gmail/compose/route.ts` auto-fetches default sendAs if `opts.from` is empty, ensuring From header always exists in MIME.
+- **Email automations are LIVE as of Session 30.** `RESEND_API_KEY` active in Vercel production. If ever needed again: resend.com → API Keys → `prosper-crm-prod`.
+- **`HTML_SIGNATURE` in `lib/gmail.ts` is DEAD CODE.** Every send path passes `signatureHtml` from `useSignature.ts`. Do NOT edit `HTML_SIGNATURE` — edit `buildSignatureHtml` in `lib/useSignature.ts` instead.
+- **`lib/useSignature.ts` is the real signature.** `buildSignatureHtml()` builds what gets sent. `LOGO_ABSOLUTE` = `https://crm.prosperwithem.com/prosper_with_em_logo_transparent.png`.
+- **Signature alignment solution (Session 30):** Inline img (no `display:block`) + `<br>` after img. Puts img in same Gmail text flow as name/URL — Gmail's text-area padding applies equally to all. Do NOT use `display:block` — it offsets the logo from the text.
+- **Gmail strips all CSS/HTML spacing on images.** `margin-left`, `padding-left` on td, `width` attribute on spacer td — all stripped. Do not attempt CSS-only alignment fixes.
+- **"Invalid To header" from Gmail API = expired OAuth token.** Reconnect Google on Meetings page before debugging MIME.
+- **`canSend` fix (Session 29):** `ComposeModal.tsx` requires `!!from.trim()` — prevents sending before SendAsDropdown loads.
+- **Compose route from-fallback (Session 29):** `app/api/gmail/compose/route.ts` auto-fetches default sendAs if `opts.from` is empty.
 - **Email delete (Session 28):** `trashGmailMessage()` in `lib/gmail.ts` calls Gmail `/messages/{id}/trash`. Wired through `PATCH /api/gmail/messages` with `action: 'trash'`. `InboxTab.handleTrash()` optimistically removes + auto-advances. `InboxReadingPane` has Delete (Trash2) alongside Archive.
 - **Calendar names:** personal = **"Personal"**, workspace = **"Business"**. Inference logic uses these exact strings.
 - **Meeting type inference:** HOLIDAY_RE → ALWAYS_PERSONAL_RE → client match → keyword → calendar name fallback → 'internal'. Existing events preserve stored `meeting_type`.
@@ -64,7 +61,6 @@ _Last updated: 2026-05-30 — CRM Session 29_
 - **`email_labels` table** — CRM tags keyed by Gmail `message_id`. Not synced back to Gmail.
 - **InboxMessageRow uses `<div role="button">`**, not `<button>`, to avoid nested-button HTML error.
 - **Folder queries:** inbox=`in:inbox`, starred=`is:starred`, archived=`-in:inbox -in:trash -in:spam`, all=`in:all`, trash=`in:trash`, drafts = Gmail Drafts API.
-- **RESEND_API_KEY is `disabled` in Vercel** — automations paused.
 - **Google Workspace:** primary `emilia@prosperwithem.com`. Aliases: hello@, sales@, support@.
 - **Google Cloud project** stays in personal account (`emilia.ceballos.delaney@gmail.com`).
 - **prosperwithem.com DNS is on GoDaddy** (domaincontrol.com nameservers).
@@ -479,3 +475,12 @@ Pairs displayed side-by-side in a full-width card above Financial Details.
 | 2026-05-30 | (CRM Session 29) Attempted spacer `<td width="16">` HTML attribute approach in `buildSignatureHtml` — also stripped, zero visible effect. |
 | 2026-05-30 | (CRM Session 29) Attempted `display:inline` (no display:block) on img in `buildSignatureHtml` — zero visible effect on Gmail mobile. |
 | 2026-05-30 | (CRM Session 29) Added TEST123 diagnostic marker to `lib/useSignature.ts` to verify browser hot reload — session ended before result confirmed. Marker must be removed before any commit. |
+| 2026-05-31 | (CRM Session 30) Confirmed TEST123 appeared in mobile email — HMR was working in Session 29; all alignment approaches did reach Gmail but were stripped. |
+| 2026-05-31 | (CRM Session 30) Identified Session 29 regression: `vertical-align:bottom` on img (no display:block, no `<br>`) caused name to render inline to the right of the logo. |
+| 2026-05-31 | (CRM Session 30) Fixed signature alignment in `lib/useSignature.ts`: inline img (no display:block) + `<br>` after img — logo and text now share Gmail's text-flow left edge, perfectly aligned. |
+| 2026-05-31 | (CRM Session 30) Removed TEST123 diagnostic marker from `lib/useSignature.ts`. |
+| 2026-05-31 | (CRM Session 30) Updated `LOGO_ABSOLUTE` in `lib/useSignature.ts` from `startup-dashboard-five.vercel.app` to `crm.prosperwithem.com`. |
+| 2026-05-31 | (CRM Session 30) Committed Sessions 28+29 changes — commit 912da63 (9 files: useSignature, ComposeModal, compose route, messages route, InboxReadingPane, InboxTab, gmail.ts, google.ts, STATUS.md). Pushed + deployed to production. |
+| 2026-05-31 | (CRM Session 30) Committed logo URL fix — commit 8ba5c0a. Pushed + deployed to production. |
+| 2026-05-31 | (CRM Session 30) Confirmed Resend domain (prosperwithem.com) still verified in Resend dashboard. |
+| 2026-05-31 | (CRM Session 30) Restored RESEND_API_KEY in Vercel production (removed "disabled" placeholder, added real key) — email automations now live. |
