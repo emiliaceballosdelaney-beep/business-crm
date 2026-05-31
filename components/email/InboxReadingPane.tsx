@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
-import { Archive, Mail, MailOpen, Reply, Loader2, Send } from 'lucide-react'
+import { Archive, Trash2, Mail, MailOpen, Reply, Loader2, Send } from 'lucide-react'
 import type { GmailMessageSummary, GmailMessageFull } from '@/lib/google'
 import type { InboxClient } from './InboxTab'
 import InboxTagEditor from './InboxTagEditor'
@@ -24,6 +24,7 @@ interface Props {
   thread:          GmailMessageFull[] | null
   onLog:           () => void
   onArchive:       () => void
+  onTrash:         () => void
   onToggleRead:    () => void
   onUpdateLabels:  (labels: string[]) => void
 }
@@ -61,7 +62,7 @@ const REPLY_BTN: React.CSSProperties = {
 export default function InboxReadingPane({
   selected, fullMessage, bodyLoading, matchedClient,
   isLogged, logging, labels, savingLabels, thread,
-  onLog, onArchive, onToggleRead, onUpdateLabels,
+  onLog, onArchive, onTrash, onToggleRead, onUpdateLabels,
 }: Props) {
   const { text: sigText, signatureHtml, save: saveSig } = useSignature()
   const [replyOpen, setReplyOpen]       = useState(false)
@@ -122,6 +123,12 @@ export default function InboxReadingPane({
           onMouseLeave={e => (e.currentTarget.style.borderColor = '#E8E0DC')}
         >
           <Archive size={14} /> Archive
+        </button>
+        <button style={TOOLBAR_BTN} onClick={onTrash}
+          onMouseEnter={e => (e.currentTarget.style.borderColor = '#debfbf')}
+          onMouseLeave={e => (e.currentTarget.style.borderColor = '#E8E0DC')}
+        >
+          <Trash2 size={14} /> Delete
         </button>
         <button style={TOOLBAR_BTN} onClick={onToggleRead}
           onMouseEnter={e => (e.currentTarget.style.borderColor = '#debfbf')}

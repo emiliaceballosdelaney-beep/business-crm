@@ -159,6 +159,13 @@ export default function InboxTab({ clients }: { clients: InboxClient[] }) {
     setSelected(messages[idx + 1] ?? messages[idx - 1] ?? null)
   }
 
+  function handleTrash(id: string) {
+    fetch('/api/gmail/messages', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messageId: id, action: 'trash' }) }).catch(() => {})
+    const idx = messages.findIndex(m => m.id === id)
+    setMessages(prev => prev.filter(m => m.id !== id))
+    setSelected(messages[idx + 1] ?? messages[idx - 1] ?? null)
+  }
+
   function handleToggleRead(id: string, isUnread: boolean) {
     fetch('/api/gmail/messages', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messageId: id, action: isUnread ? 'mark_read' : 'mark_unread' }) }).catch(() => {})
     setMessages(prev => prev.map(m => m.id === id ? { ...m, isUnread: !isUnread } : m))
@@ -259,6 +266,7 @@ export default function InboxTab({ clients }: { clients: InboxClient[] }) {
             thread={thread}
             onLog={() => { const c = matchClient(parseFromHeader(selected.from).email); if (c) handleLog(c) }}
             onArchive={() => handleArchive(selected.id)}
+            onTrash={() => handleTrash(selected.id)}
             onToggleRead={() => handleToggleRead(selected.id, selected.isUnread ?? false)}
             onUpdateLabels={labels => handleUpdateLabels(selected.id, labels)}
           />

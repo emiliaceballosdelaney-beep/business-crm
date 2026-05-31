@@ -45,7 +45,7 @@ export default function ComposeModal({ isOpen, onClose, initial }: Props) {
 
   const { text: sigText, signatureHtml, save: saveSig } = useSignature()
   const bodyText = body.replace(/<[^>]*>/g, '').trim()
-  const canSend = !!to.trim() && !!subject.trim() && !!bodyText
+  const canSend = !!from.trim() && !!to.trim() && !!subject.trim() && !!bodyText
 
   async function handleSaveDraft() {
     setSavingDraft(true)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getValidAccessToken, listGmailMessages, getGmailMessage, archiveGmailMessage, markGmailMessage, starGmailMessage } from '@/lib/google'
+import { getValidAccessToken, listGmailMessages, getGmailMessage, archiveGmailMessage, trashGmailMessage, markGmailMessage, starGmailMessage } from '@/lib/google'
 
 const FOLDER_QUERIES: Record<string, string> = {
   inbox:    'in:inbox',
@@ -43,6 +43,7 @@ export async function PATCH(req: NextRequest) {
   const { messageId, action } = await req.json() as { messageId: string; action: string }
   try {
     if      (action === 'archive')      await archiveGmailMessage(accessToken, messageId)
+    else if (action === 'trash')        await trashGmailMessage(accessToken, messageId)
     else if (action === 'mark_read')    await markGmailMessage(accessToken, messageId, true)
     else if (action === 'mark_unread')  await markGmailMessage(accessToken, messageId, false)
     else if (action === 'star')         await starGmailMessage(accessToken, messageId, true)

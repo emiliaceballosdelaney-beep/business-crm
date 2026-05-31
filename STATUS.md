@@ -1,70 +1,80 @@
 # Startup-Dashboard — STATUS.md
 
 ## Handoff
-_Last updated: 2026-05-30 — CRM Session 27_
+_Last updated: 2026-05-30 — CRM Session 29_
 
-**Status:** All Session 27 changes deployed to production. Clean stop.
+**Status:** Locally verified but NOT committed or deployed. Session 28 + Session 29 changes are uncommitted. `lib/useSignature.ts` has a TEST123 diagnostic marker (line 18) that MUST be removed before any commit or deploy. Email signature mobile alignment is unresolved and still under investigation.
+
 **Just completed:**
-- Committed + deployed Session 26 changes (meeting delete fix, daily sync cron)
-- Rewrote calendar sync route — meeting type now inferred from title keywords + calendar name, client linked from attendee email match
-- Added `Holiday` meeting type (gold, HL abbrev) with comprehensive US holiday keyword list
-- Added travel/accommodation keywords (`ALWAYS_PERSONAL_RE`) that route to Personal before client match — prevents vacation events from being tagged as Client Session
-- Added post-sync DB reclassify pass — fixes events outside the 7-day sync window via direct Supabase update; only touches `session`/`internal` types so manual edits survive
-- Fixed meeting_type + client_id preservation — existing events now keep their stored values through resyncs; inference only runs for brand new events
-- Fixed meeting title display — Google Calendar event title is always the primary label; linked client name shows as a small muted secondary line below it
-- Emilia renamed Google calendars: "Emilia Delaney" → **"Personal"**, "Emilia Ceballos" → **"Business"**
-- Email template review deferred again — Emilia redirected to CRM functionality work both times
+- Discovered `HTML_SIGNATURE` in `lib/gmail.ts` is dead code — every UI send path passes `signatureHtml` from `useSignature.ts`; the constant is never reached. All Session 28 alignment work was on the wrong file.
+- Fixed `ComposeModal.tsx`: `canSend` now requires `!!from.trim()` — Send button stays disabled until SendAsDropdown loads, preventing empty-From sends
+- Fixed `app/api/gmail/compose/route.ts`: server-side fallback fetches default sendAs when `from` is empty; improved error logging
+- Diagnosed "Invalid To header" Gmail error — it was a misleading error for an expired OAuth token, NOT a MIME problem. Reconnecting Google fixed sending.
+- Attempted 6+ alignment approaches on `buildSignatureHtml` (the real sent signature): margin-left on img (CSS stripped), table with padding-left:12px on td (CSS stripped), spacer td with HTML width=16 (stripped), display:inline / no display property (no effect). All had zero visible change on Gmail mobile.
+- Added TEST123 diagnostic marker to `useSignature.ts` to verify if hot reload is reaching the browser — session ended before result confirmed.
 
-**Stopped at:** Clean stop. All deployed to production (crm.prosperwithem.com). Last sync: 32 meetings, 0 failures.
-**Next action:** Email template review — open `lib/email/templates/` and walk through all 5 with Emilia, then restore RESEND_API_KEY. To restore the key: get it from resend.com → API Keys, then update it in Vercel dashboard → Settings → Environment Variables (no redeploy needed).
+**Stopped at:** Mid-investigation. TEST123 marker is live in `lib/useSignature.ts`. Did not confirm whether it appeared in the test email (session ended first).
+
+**Next action:** Hard refresh (Cmd+Shift+R), send a test email, check if "TEST123" appears on mobile. If YES → code is updating but Gmail mobile strips everything; decide: text-only sig or accept offset. If NO → stale browser cache; kill/restart dev server, hard refresh, retry.
+
 **Open tasks:**
-- [ ] Email template review — Emilia to approve or edit 5 templates (discovery-invite, intake-followup, post-discovery-thanks, post-discovery-checkin, idle-nudge)
-- [ ] Restore RESEND_API_KEY in Vercel env vars after template approval — key must be retrieved from resend.com (not in local env; was overwritten with "disabled")
+- [ ] Confirm TEST123 result, then remove marker from `lib/useSignature.ts` line 18 before any commit
+- [ ] Resolve email signature logo alignment on mobile Gmail — or decide to accept it / go text-only
+- [ ] Fix `buildSignatureHtml` to use base64 PNG instead of external Vercel URL (Session 28's base64 fix was to dead code — "Display images below" is still broken for actual sends)
+- [ ] Deploy Session 28 + 29 changes to production once alignment resolved and TEST123 removed
+- [ ] Email template review — approve or edit 5 templates (discovery-invite, intake-followup, post-discovery-thanks, post-discovery-checkin, idle-nudge)
+- [ ] Restore RESEND_API_KEY in Vercel after template approval — retrieve from resend.com
 - [ ] Confirm Resend domain still verified at resend.com → Domains
+
 **Open questions:**
+- Did TEST123 appear in the latest test email? (unconfirmed — session ended)
+- Is there any reliable way to align a logo image with text in Gmail mobile? All CSS and HTML attribute approaches have been stripped.
+- Should we go text-only signature if alignment can't be fixed?
 - Template 3 (post-discovery-thanks): does "I'm already thinking about how I can support you on this journey" feel right for someone who hasn't signed on yet?
-- Template 5 (idle-nudge): does the pain point list (debt, investing, stress) match the audience who'd receive this?
-- Emilia mentioned wanting a future skill for auto-tagging emails — no action yet, just flagged
+- Template 5 (idle-nudge): does the pain point list (debt, investing, stress) match the audience?
+- Emilia mentioned wanting a future skill for auto-tagging emails — no action yet
 
 **Critical context:**
-- **CRM CODE IS IN `business-crm/`** — NOT in the top-level `Startup-Dashboard/` folder. Run all dev commands from `business-crm/`: `cd business-crm && npm run dev -- --port 3001 --webpack` / `vercel --prod`.
-- **Dev server MUST use `--webpack` flag** — Turbopack has a fatal panic loop on this project causing flickering/unclickable UI. Always: `npm run dev -- --port 3001 --webpack`.
+- **CRM CODE IS IN `business-crm/`** — NOT in the top-level `Startup-Dashboard/` folder. Run all dev commands from `business-crm/`: `npm run dev -- --port 3001 --webpack` / `vercel --prod`.
+- **Dev server MUST use `--webpack` flag** — Turbopack causes fatal panic loop. Always: `npm run dev -- --port 3001 --webpack`.
 - **DEPLOY RULE:** Do NOT run `vercel --prod` until Emilia has tested on localhost and explicitly says to deploy.
 - **Dev port:** CRM runs on port 3001 — port 3000 is used by the client portal.
-- **Calendar names (updated Session 27):** personal = **"Personal"**, workspace = **"Business"**. Emilia renamed them in Google Calendar settings 2026-05-30. Inference logic in sync route uses these exact strings — if she renames again, update `ALWAYS_PERSONAL_RE` fallback in `app/api/calendar/sync/route.ts`.
-- **Meeting type inference:** New events infer type from `inferMeetingType(title, calendarName, hasClientMatch)`. Order: HOLIDAY_RE → ALWAYS_PERSONAL_RE → client match (→ session/discovery) → keyword → calendar name fallback → 'internal'. Existing events preserve their stored `meeting_type` — inference does NOT re-run on subsequent syncs.
-- **Post-sync reclassify pass:** runs after every sync in `app/api/calendar/sync/route.ts`. Applies PERSONAL_OR and HOLIDAY_OR ilike patterns directly to the DB. Only fires on meetings with `meeting_type IN ('session', 'internal')` — manual edits to personal/holiday/discovery types are safe.
-- **Holiday meeting type:** `meeting_type = 'holiday'`, abbrev `HL`, gold color `#d4a843`. Added to MEETING_TYPE_CONFIG + MeetingForm dropdown. Keyword list in `HOLIDAY_RE` constant in sync route.
-- **Meeting title display:** `meeting.title` (Google Calendar event name) is always the primary bold label. Linked client name shows as a small muted line below — never replaces the title. This is the pattern in MeetingCard.tsx, MeetingsCalendar.tsx (day panel), HomeMeetingsSection.tsx.
-- **Meeting delete architecture:** DELETE route (`app/api/calendar/event/route.ts`) accepts `{ googleEventId, sourceCalendarName }`. It calls `listCalendars()` to match `sourceCalendarName` (display name) to an actual Google Calendar ID, falling back to `tokens.calendar_id`. `ConfirmDelete` inside MeetingDetail MUST stay inside `<DialogContent>` — putting it outside causes Radix focus trap to block it.
-- **Daily calendar sync cron:** `app/api/cron/sync-calendar/route.ts` runs at 8am daily (vercel.json). Uses `CRON_SECRET` auth (already set in Vercel). When upgrading to Vercel Pro, update `schedule` in vercel.json to run more frequently (e.g. `*/15 * * * *` for every 15 min).
-- **Calendar sharing:** Emilia's personal Gmail calendar (`emilia.delaney@gmail.com`) is shared with `emilia@prosperwithem.com` with "See all event details" access. If personal calendar events stop syncing, check that the share is still active in Google Calendar → Settings → Share with specific people.
-- **`source_calendar` column:** Added in `schema/phase16-source-calendar.sql`. Present in `MeetingRow` (MeetingCard.tsx), `MeetingDetailRow` (clients/types.ts), and `home/types.ts MeetingRow`. All meetings queries include it in SELECT. Displayed on list cards, DayPanel cards, MeetingsTab cards, and detail modal. Calendar grid pills (month/week cells) are too small — no tag there by design.
-- **Gmail Send As aliases:** hello@, sales@, support@ are configured in Gmail Settings → Accounts → "Send mail as". NOT auto-populated from Google Workspace — added manually.
-- **MilestoneTaskRow due_date:** always use `.slice(0, 10) + 'T12:00:00'` when parsing task due dates from DB — column may contain full ISO timestamps. T12:00:00 (noon) prevents UTC off-by-one in Pacific time.
-- **Tiptap body flow:** All compose/reply body state is Tiptap HTML (NOT plain text). `buildMimeRaw` in `lib/gmail.ts` no longer calls `textToHtml()`. `canSend` strips HTML tags to check content.
-- **`@tiptap/extension-font-size` does NOT exist on npm.** Font size is a custom inline `Extension.create()` inside `RichTextEditor.tsx`.
-- **Signature architecture:** Text in `localStorage` key `crmSignatureText`. Hook at `lib/useSignature.ts`. Logo always fixed. `signatureHtml` sent with every compose/reply/draft.
-- **Transparent logo:** `public/prosper_with_em_logo_transparent.png`. Preview uses relative path; sent emails use absolute URL `https://startup-dashboard-five.vercel.app/prosper_with_em_logo_transparent.png`.
+- **`HTML_SIGNATURE` in `lib/gmail.ts` is DEAD CODE.** `buildMimeRaw` uses `opts.signatureHtml !== undefined ? opts.signatureHtml : HTML_SIGNATURE`, and every send path (ComposeModal, InboxReadingPane reply, drafts) passes `signatureHtml` from `useSignature.ts`. Do NOT edit `HTML_SIGNATURE` to fix alignment or base64 — edit `buildSignatureHtml` in `lib/useSignature.ts` instead.
+- **`lib/useSignature.ts` is the real signature.** `buildSignatureHtml()` builds what actually gets sent. Currently uses `LOGO_ABSOLUTE` (external Vercel URL, NOT base64). Has TEST123 diagnostic marker at line 18 — remove before any commit or deploy.
+- **Gmail mobile strips all tested CSS/HTML spacing:** `margin-left` on img (CSS), `padding-left` on td (CSS), `width` attribute on spacer td (HTML attr), no-display-property on img — all have zero visible effect. Root cause: Gmail mobile places block images at the container edge, outside text flow.
+- **"Invalid To header" from Gmail API = expired OAuth token.** Misleading error. If you see it, reconnect Google on the Meetings page first before debugging MIME.
+- **`canSend` fix (Session 29):** `ComposeModal.tsx` now requires `!!from.trim()` — prevents sending before SendAsDropdown loads.
+- **Compose route from-fallback (Session 29):** `app/api/gmail/compose/route.ts` auto-fetches default sendAs if `opts.from` is empty, ensuring From header always exists in MIME.
+- **Email delete (Session 28):** `trashGmailMessage()` in `lib/gmail.ts` calls Gmail `/messages/{id}/trash`. Wired through `PATCH /api/gmail/messages` with `action: 'trash'`. `InboxTab.handleTrash()` optimistically removes + auto-advances. `InboxReadingPane` has Delete (Trash2) alongside Archive.
+- **Calendar names:** personal = **"Personal"**, workspace = **"Business"**. Inference logic uses these exact strings.
+- **Meeting type inference:** HOLIDAY_RE → ALWAYS_PERSONAL_RE → client match → keyword → calendar name fallback → 'internal'. Existing events preserve stored `meeting_type`.
+- **Post-sync reclassify pass:** only overrides `meeting_type IN ('session', 'internal')` — manual edits to other types survive.
+- **Holiday meeting type:** `meeting_type = 'holiday'`, abbrev `HL`, gold `#d4a843`.
+- **Meeting delete:** DELETE route accepts `{ googleEventId, sourceCalendarName }`. `ConfirmDelete` MUST stay inside `<DialogContent>` — Radix focus trap blocks it if outside.
+- **Daily calendar sync cron:** runs at 8am daily. Uses `CRON_SECRET` auth.
+- **Calendar sharing:** personal Gmail (`emilia.delaney@gmail.com`) shared with workspace (`emilia@prosperwithem.com`).
+- **`source_calendar` column:** in `meetings` table. Present in all meeting queries and card displays.
+- **Gmail Send As aliases:** hello@, sales@, support@ added manually in Gmail Settings → Accounts → "Send mail as".
+- **MilestoneTaskRow due_date:** always use `.slice(0, 10) + 'T12:00:00'` — column may contain full ISO timestamps.
+- **Tiptap body:** All compose/reply body state is Tiptap HTML. `buildMimeRaw` takes body as HTML directly. `canSend` strips HTML tags to check actual text content.
+- **`@tiptap/extension-font-size` does NOT exist on npm** — custom inline Extension in `RichTextEditor.tsx`.
+- **Signature architecture:** Text in `localStorage` key `crmSignatureText`. Hook at `lib/useSignature.ts`. `signatureHtml` sent with every compose/reply/draft.
 - **`lib/gmail.ts`** contains all Gmail types and functions. `lib/google.ts` re-exports everything.
-- **`InboxThreadView.tsx`** — thread cache in InboxTab keyed by `threadId` (Map ref). Newest message never collapses.
-- **Google connected with `gmail.modify` + `gmail.settings.basic` scopes** — Archive, Mark, Reply, Star, Send As aliases all work in production.
-- **`email_labels` table** in Supabase — CRM tags keyed by Gmail `message_id` (TEXT PRIMARY KEY, labels TEXT[]). Not synced back to Gmail.
+- **Google connected with `gmail.modify` + `gmail.settings.basic` scopes.**
+- **`email_labels` table** — CRM tags keyed by Gmail `message_id`. Not synced back to Gmail.
 - **InboxMessageRow uses `<div role="button">`**, not `<button>`, to avoid nested-button HTML error.
 - **Folder queries:** inbox=`in:inbox`, starred=`is:starred`, archived=`-in:inbox -in:trash -in:spam`, all=`in:all`, trash=`in:trash`, drafts = Gmail Drafts API.
-- **RESEND_API_KEY is `disabled` in Vercel** — automations paused. Real key must be retrieved from resend.com (was overwritten; not in local env). Restore after template approval (no redeploy needed).
-- **Google Workspace:** primary `emilia@prosperwithem.com`. Aliases: hello@, sales@, support@. GoDaddy DNS has Google MX + Resend TXT records.
-- **Google Cloud project** stays in personal account (`emilia.ceballos.delaney@gmail.com`) — `emilia@prosperwithem.com` is OAuth test user.
+- **RESEND_API_KEY is `disabled` in Vercel** — automations paused.
+- **Google Workspace:** primary `emilia@prosperwithem.com`. Aliases: hello@, sales@, support@.
+- **Google Cloud project** stays in personal account (`emilia.ceballos.delaney@gmail.com`).
 - **prosperwithem.com DNS is on GoDaddy** (domaincontrol.com nameservers).
-- **email_log column is `sent_at`** (NOT `created_at`) — do not revert.
+- **email_log column is `sent_at`** (NOT `created_at`).
 - **ScheduledEmailsPanel + IntakeResponsesCard** in ClientEmailsTab only (not OverviewTab).
-- **CRM custom domain:** `crm.prosperwithem.com` (CNAME on GoDaddy, connected to Vercel Production). Both URLs still work.
+- **CRM custom domain:** `crm.prosperwithem.com` (CNAME on GoDaddy → Vercel Production).
 - App is **Prosper with Em** internal CRM only. Pipeline stages: `lead | discovery | active | paused | cold`
 
 ---
 
-## Current State
-**Phase 1 (Design) — COMPLETE.** All 7 Stitch screens locked.
 **Phase 2 (Supabase migration) — COMPLETE.** Applied and verified 2026-05-22.
 **Phase 3 (Code setup) — COMPLETE.** Fonts, brand tokens, constants, validations, sidebar, dead code all done.
 **Phase 4 (Screen builds) — COMPLETE ✅ Home · Clients · Client Detail · Meetings · Milestones · Projects · Tasks**
@@ -460,3 +470,12 @@ Pairs displayed side-by-side in a full-width card above Financial Details.
 | 2026-05-30 | (CRM Session 27) Fixed meeting_type + client_id preservation through resyncs — sync route now fetches all existing meetings by google_event_id; existing events keep their stored values; inference only runs for brand new events. Deployed commit 0d9f6a2. |
 | 2026-05-30 | (CRM Session 27) Triggered 4 manual syncs throughout session — all returned 32 events, 3 calendars, 0 failures. |
 | 2026-05-30 | (CRM Session 27) Email template review deferred again — Emilia redirected to CRM functionality work. RESEND_API_KEY still set to "disabled"; real key must be retrieved from resend.com. |
+| 2026-05-30 | (CRM Session 29) Diagnosed that `HTML_SIGNATURE` in `lib/gmail.ts` is dead code — every UI send path passes `signatureHtml` from `useSignature.ts`; all Session 28 alignment work was on the wrong file. |
+| 2026-05-30 | (CRM Session 29) Fixed `ComposeModal.tsx` `canSend` to require `!!from.trim()` — Send button stays disabled until SendAsDropdown loads, preventing empty-From MIME sends. |
+| 2026-05-30 | (CRM Session 29) Fixed `app/api/gmail/compose/route.ts`: added server-side fallback to fetch default sendAs when `from` is empty; improved error logging with `console.error`. |
+| 2026-05-30 | (CRM Session 29) Diagnosed "Invalid To header" Gmail error as a red herring for an expired OAuth token — reconnecting Google fixed email sending. |
+| 2026-05-30 | (CRM Session 29) Attempted margin-left:12px, 16px on `HTML_SIGNATURE` img (dead code — no effect on sent emails). |
+| 2026-05-30 | (CRM Session 29) Attempted table with `padding-left:12px` on `<td>` in `buildSignatureHtml` — CSS stripped by Gmail mobile, zero visible effect. |
+| 2026-05-30 | (CRM Session 29) Attempted spacer `<td width="16">` HTML attribute approach in `buildSignatureHtml` — also stripped, zero visible effect. |
+| 2026-05-30 | (CRM Session 29) Attempted `display:inline` (no display:block) on img in `buildSignatureHtml` — zero visible effect on Gmail mobile. |
+| 2026-05-30 | (CRM Session 29) Added TEST123 diagnostic marker to `lib/useSignature.ts` to verify browser hot reload — session ended before result confirmed. Marker must be removed before any commit. |

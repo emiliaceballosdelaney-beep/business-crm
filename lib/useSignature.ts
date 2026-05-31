@@ -15,7 +15,7 @@ export function buildSignatureHtml(text: string): string {
     return line
   }).join('<br>')
 
-  return `<br><br>--<br><img src="${LOGO_ABSOLUTE}" alt="Prosper with Em" style="height:40px;width:auto;display:block;margin-bottom:6px;">${bodyHtml}`
+  return `<br><br>--<br><img src="${LOGO_ABSOLUTE}" alt="Prosper with Em" style="height:40px;width:auto;margin:8px 0 4px;"><br>${bodyHtml}`
 }
 
 export function useSignature() {

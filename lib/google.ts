@@ -171,6 +171,7 @@ export {
   getGmailMessage,
   getGmailThread,
   archiveGmailMessage,
+  trashGmailMessage,
   starGmailMessage,
   markGmailMessage,
   sendGmailReply,
